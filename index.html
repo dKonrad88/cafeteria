@@ -1,7 +1,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Grão a Grão</title>
-<meta name="description" content="Jogo de gestão de cafeteria: insumos, preço, reputação e um mercado que vive — faça o negócio crescer sem quebrar.">
+<title>Café da Corte</title>
+<meta name="description" content="Assumi as rédeas de uma casa de café e faça-a florescer na alta sociedade: grãos, preço, reputação e um bairro que tudo observa e comenta.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -250,12 +250,12 @@
     <!-- INÍCIO -->
     <section class="screen" id="tela-inicio">
       <div class="logo-cup">☕</div>
-      <h1>Grão a <span class="a">Grão</span></h1>
-      <p class="tagline">“grão a grão a galinha enche o papo”</p>
-      <p class="pitch">Você assumiu uma cafeteria de bairro. Compre os grãos na hora certa, acerte o preço, cuide da reputação — e leia o humor da vizinhança, porque ele nunca fica parado.</p>
+      <h1>Café da <span class="a">Corte</span></h1>
+      <p class="tagline">“Fortuna e boa fama, como um bom café, servem-se aos poucos.”</p>
+      <p class="pitch">Prezado proprietário: a vós confiamos as chaves desta casa de café. Escolhei os grãos com esperteza, fixai um preço à altura e zelai por vossa reputação — pois a sociedade do bairro tudo observa, tudo comenta, e jamais perdoa um café medíocre.</p>
       <div class="row-btns">
-        <button class="cta" id="btn-comecar">Assumir a cafeteria ☕</button>
-        <button class="cta ghost" id="btn-continuar" hidden>Continuar de onde parei</button>
+        <button class="cta" id="btn-comecar">Assumir a casa de café ☕</button>
+        <button class="cta ghost" id="btn-continuar" hidden>Retomar vossa temporada</button>
       </div>
     </section>
 
@@ -347,13 +347,13 @@
     <!-- GAME OVER -->
     <section class="screen" id="tela-fim" hidden>
       <div class="big">🥀</div>
-      <h2>A conta não fechou</h2>
-      <p class="pitch" style="max-width:32ch" id="fim-texto">Sua cafeteria ficou no vermelho tempo demais e fechou as portas.</p>
+      <h2>As portas se fecharam</h2>
+      <p class="pitch" style="max-width:32ch" id="fim-texto">Vossa casa de café passou tempo demais no vermelho, e a sociedade seguiu adiante.</p>
       <div class="previsao" style="width:100%">
         <div class="card"><div class="k">Dias abertos</div><div class="v" id="fim-dias">0</div></div>
         <div class="card"><div class="k">Patrimônio máx.</div><div class="v" id="fim-melhor">R$ 0</div></div>
       </div>
-      <button class="cta" id="btn-recomecar" style="margin-top:6px">Tentar de novo ☕</button>
+      <button class="cta" id="btn-recomecar" style="margin-top:6px">Tentar nova temporada ☕</button>
     </section>
   </main>
   <nav class="botnav" id="botnav">
@@ -407,6 +407,30 @@ const DIAS_SEMANA=[
   {nome:'Sexta',ab:'Sex',dem:1.16},
   {nome:'Sábado',ab:'Sáb',dem:1.28},
 ];
+/* ===================== BAIRRO (mundo com caráter) =====================
+   Cada partida nasce num bairro com PERFIL DE POPULAÇÃO. Hoje o perfil já modula
+   tamanho/gosto/ritmo; na Etapa 2 os CLIENTES vão nascer desse perfil (renda→orçamento,
+   pressa→paciência, sensPreco→reação a preço, gostos→o que pedem). Ranges por arquétipo,
+   sorteados pela seed → dois bairros do mesmo tipo se parecem, mas nunca são iguais. */
+const BAIRRO_TIPOS={
+  residencial:  {nome:'Residencial',  emoji:'🏘️', tamanho:[34,46], renda:[.35,.60], pressa:[.25,.45], sensPreco:[.50,.70], fdsAmp:[.90,1.10], gostos:{quente:1.10,comida:1.20,refresco:.90,gelado:.85}, vizinhos:['praca','escola']},
+  comercial:    {nome:'Comercial',    emoji:'🏢', tamanho:[44,58], renda:[.50,.75], pressa:[.70,.92], sensPreco:[.40,.60], fdsAmp:[.40,.65], gostos:{quente:1.30,comida:1.00,refresco:.90,gelado:.80}, vizinhos:['predio','concorrente']},
+  universitario:{nome:'Universitário',emoji:'🎓', tamanho:[40,54], renda:[.25,.45], pressa:[.40,.60], sensPreco:[.70,.90], fdsAmp:[.80,1.00], gostos:{quente:1.00,comida:1.10,refresco:1.25,gelado:1.20}, vizinhos:['escola','praca']},
+  boemio:       {nome:'Boêmio',       emoji:'🎭', tamanho:[32,44], renda:[.45,.70], pressa:[.20,.40], sensPreco:[.45,.65], fdsAmp:[1.20,1.50], gostos:{quente:1.15,comida:1.20,refresco:1.05,gelado:1.05}, vizinhos:['praca','concorrente']},
+  turistico:    {nome:'Turístico',    emoji:'🏖️', tamanho:[38,52], renda:[.55,.85], pressa:[.30,.50], sensPreco:[.30,.50], fdsAmp:[1.20,1.50], gostos:{quente:1.00,comida:1.10,refresco:1.30,gelado:1.35}, vizinhos:['praca','concorrente']},
+};
+const BAIRRO_NOMES={pre:['Vila','Jardim','Alto','Bairro','Recanto','Morro','Largo'],nome:['Aurora','Belmonte','Boa Vista','Glória','Providência','Formosa','Serena','Mirante','Palmeiras','Rosário','Cascata','Alvorada','Esperança','Concórdia','Bonança','Aliança']};
+function gerarNomeBairro(){ return pick(BAIRRO_NOMES.pre)+' '+pick(BAIRRO_NOMES.nome); }
+function gerarBairro(){
+  const tipo=pick(Object.keys(BAIRRO_TIPOS)), t=BAIRRO_TIPOS[tipo], r=a=>rnd(a[0],a[1]);
+  return { tipo, tipoNome:t.nome, emoji:t.emoji, nome:gerarNomeBairro(),
+    tamanho:Math.round(r(t.tamanho)),
+    renda:+r(t.renda).toFixed(2), pressa:+r(t.pressa).toFixed(2), sensPreco:+r(t.sensPreco).toFixed(2), fdsAmp:+r(t.fdsAmp).toFixed(2),
+    gostos:Object.assign({},t.gostos), vizinhos:t.vizinhos.slice() };
+}
+function baseCidade(){ return (S.bairro&&S.bairro.tamanho)||CFG.baseCidade; }
+function gostoBairro(p){ return (S.bairro&&S.bairro.gostos[p.cat])||1; }
+function fatorDiaSemana(){ const d=DIAS_SEMANA[S.diaSemana%7].dem; return S.bairro? 1+(d-1)*S.bairro.fdsAmp : d; }   // o ritmo da semana depende do caráter do bairro
 /* Ingredientes (matéria-prima). preco = base * mercado (oscila). vol = volatilidade */
 function ingredientesBase(){return{
   graoComum:   {nome:'Grão comum',emoji:'🫘',base:0.90,vol:.14,qual:.45,seco:true,estoque:0,desbloq:true},
@@ -546,8 +570,9 @@ let S=null, simResultado=null, animTimer=null, gestaoTab='melhorias', redeInfoAb
 function novoJogo(){
   const seed=(PREFS.seedFixa!=null?PREFS.seedFixa:novaSeed())>>>0;   // seed fixa (debug) ou aleatória
   setSeed(seed);
+  const bairro=gerarBairro();
   return{
-    dia:1, caixa:CFG.caixaInicial, seed, rngState:seed,
+    dia:1, caixa:CFG.caixaInicial, seed, rngState:seed, bairro,
     rep:{custo:64,ambiente:54,atendimento:58,qualidade:52,variedade:45},
     ing:ingredientesBase(), prod:produtosBase(),
     graoAtivo:'graoComum',
@@ -567,6 +592,7 @@ function sanear(s){ if(!s.clube||!Array.isArray(s.clube.planos)) s.clube={planos
   if(s.diaSemana==null)s.diaSemana=Math.floor(srandom()*7); if(s.freelaHoje==null)s.freelaHoje=0;
   if(!Array.isArray(s.filiais)) s.filiais=[]; if(!Array.isArray(s.metasVistas)) s.metasVistas=[]; if(!('emprestimo' in s)) s.emprestimo=null; if(s.patrimonioPico==null) s.patrimonioPico=s.caixa||0;
   if(!Array.isArray(s.combosSalvos)) s.combosSalvos=[];
+  if(!s.bairro||!s.bairro.tamanho) s.bairro=gerarBairro();   // save antigo ganha um bairro (retrofit)
   return s; }
 function apagarSave(){try{localStorage.removeItem(SAVE_KEY)}catch(e){}}
 /* preferências (persistem separadas do save — não somem ao recomeçar) */
@@ -608,8 +634,9 @@ function custoUnit(p){
 }
 function qualGrao(){return S.ing[S.graoAtivo].qual}
 function ambienteNorm(){return S.rep.ambiente/100}
-function justoEff(p){ // preço justo sobe com qualidade e ambiente
-  return p.justo*(1 + 0.10*S.upg.maquina + 0.20*qualGrao()*(p.receita&&p.receita.grao?1:0) + 0.10*ambienteNorm() + 0.06*S.upg.vitrine*(p.tipo==='revenda'?1:0));
+function fatorRendaBairro(){ return S.bairro? (0.88+0.26*S.bairro.renda) : 1; }   // bairro rico tolera preço mais alto; popular, menos
+function justoEff(p){ // preço justo sobe com qualidade e ambiente (e com a renda do bairro)
+  return p.justo*fatorRendaBairro()*(1 + 0.10*S.upg.maquina + 0.20*qualGrao()*(p.receita&&p.receita.grao?1:0) + 0.10*ambienteNorm() + 0.06*S.upg.vitrine*(p.tipo==='revenda'?1:0));
 }
 function fatorPreco(p){ return clamp(Math.pow(justoEff(p)/p.preco, CFG.elast), 0.1, 1.9); }
 function seloPreco(p){ const r=p.preco/justoEff(p);
@@ -735,9 +762,9 @@ function checarMetas(){
 /* estimativa de clientes p/ manhã */
 function estimativaClientes(){
   const ativos=produtosAtivos(); let sp=0,spw=0;
-  ativos.forEach(p=>{sp+=p.pop;spw+=p.pop*fatorPreco(p)*multTend(p)});
+  ativos.forEach(p=>{const g=gostoBairro(p);sp+=p.pop*g;spw+=p.pop*g*fatorPreco(p)*multTend(p)});
   const fp=sp>0?spw/sp:1;
-  const mid=CFG.baseCidade*fatorRep()*CLIMAS[S.climaHoje].dem*DIAS_SEMANA[S.diaSemana%7].dem*fatorMkt()*fp;
+  const mid=baseCidade()*fatorRep()*CLIMAS[S.climaHoje].dem*fatorDiaSemana()*fatorMkt()*fp;
   return {mid, lo:round(mid*0.8), hi:round(mid*1.22)};
 }
 
@@ -761,13 +788,14 @@ function simularDia(){
     let af=1;
     if(p.cat==='gelado'||p.cat==='refresco') af=clima.temp>0?1+clima.temp*0.25:0.6;
     if(p.cat==='quente') af=clima.temp<0?1+(-clima.temp)*0.18:0.85;
-    p._fp=fatorPreco(p); p._peso=p.pop*p._fp*multTend(p)*af;
-    somaPesos+=p._peso; sp+=p.pop; spw+=p.pop*p._fp;
+    const g=gostoBairro(p);
+    p._fp=fatorPreco(p); p._peso=p.pop*g*p._fp*multTend(p)*af;
+    somaPesos+=p._peso; sp+=p.pop*g; spw+=p.pop*g*p._fp;
   });
   const fPrecoMedio=sp>0?spw/sp:1;
   // demanda de avulsos — inclui o dia da semana e a "sorte do dia" (ruído)
-  const fDiaSemana=DIAS_SEMANA[S.diaSemana%7].dem;
-  let demanda=CFG.baseCidade*fatorRep()*clima.dem*fDiaSemana*fatorMkt()*fPrecoMedio*(evento.dem||1)*rnd(.88,1.12);
+  const fDiaSemana=fatorDiaSemana();
+  let demanda=baseCidade()*fatorRep()*clima.dem*fDiaSemana*fatorMkt()*fPrecoMedio*(evento.dem||1)*rnd(.88,1.12);
   // delivery adiciona um canal
   const fatDelivery=S.upg.delivery?1.18:1;
   demanda*=fatDelivery;
@@ -1534,22 +1562,24 @@ function editarPlano(idx){
 }
 
 function poisBairro(){
-  const t=tendObj(), amanha=DIAS_SEMANA[(S.diaSemana+1)%7], fds=amanha.dem>=1.1;   // sex/sáb (dias fortes)
+  const t=tendObj(), amanha=DIAS_SEMANA[(S.diaSemana+1)%7], forte=amanha.dem>=1.1;   // sex/sáb (dias fortes)
   const predio=(S.bonusBase||0)>0;
-  return [
-    {emo:'🏢',nome:'Prédio comercial',pos:'top',   ativo:predio, ef:predio?'traz café rápido de manhã':'escritórios ainda tímidos'},
-    {emo:'🎓',nome:'Escola',          pos:'left',  ativo:t.id==='estudante', ef:t.id==='estudante'?'estudantes em peso hoje':'movimento de estudante fraco'},
-    {emo:'☕',nome:'Concorrente',      pos:'right', rival:true, ef:'de olho no seu preço'},
-    {emo:'🌳',nome:'Praça',           pos:'bottom',ativo:fds, ef:fds?'bomba no fim de semana':'tranquila nos dias de semana'},
-  ];
+  const defs={
+    praca:{emo:'🌳',nome:'Praça',ativo:forte,ef:forte?'bomba no fim de semana':'tranquila nos dias de semana'},
+    escola:{emo:'🎓',nome:'Escola',ativo:t.id==='estudante',ef:t.id==='estudante'?'estudantes em peso hoje':'movimento de estudante fraco'},
+    predio:{emo:'🏢',nome:'Prédio comercial',ativo:predio,ef:predio?'traz café rápido de manhã':'escritórios ainda tímidos'},
+    concorrente:{emo:'☕',nome:'Concorrente',rival:true,ef:'de olho no seu preço'},
+  };
+  const viz=(S.bairro&&S.bairro.vizinhos)||['praca','escola'], pos=['left','right','top','bottom'];
+  return viz.map((id,i)=>Object.assign({pos:pos[i]||'bottom'},defs[id]||{emo:'📍',nome:id,ef:''})).filter(p=>p.nome);
 }
 function renderMapaBairro(box){
   const t=tendObj(), cl=CLIMAS[S.climaHoje], pois=poisBairro();
   const wrap=document.createElement('div');wrap.className='card';wrap.style.cssText='border-color:var(--teal);padding:12px';
   const head=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
     <div style="font-size:18px">🗺️</div>
-    <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px">Seu bairro</div>
-      <div class="tiny muted">${cl.emoji} ${cl.nome}${t.id!=='normal'?` · ${t.emoji} ${t.nome}`:''}</div></div>
+    <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px">${S.bairro?S.bairro.nome:'Seu bairro'}</div>
+      <div class="tiny muted">${S.bairro?S.bairro.emoji+' '+S.bairro.tipoNome+' · ':''}${cl.emoji} ${cl.nome}${t.id!=='normal'?` · ${t.emoji} ${t.nome}`:''}</div></div>
     ${S.boost?'<span class="chip trend">🚀 em alta</span>':''}</div>`;
   const cell=poi=>poi?`<div class="mapa-poi ${poi.rival?'rival':(poi.ativo?'on':'')}" data-ef="${poi.emo} ${poi.nome}: ${poi.ef}"><div style="font-size:21px">${poi.emo}</div><div class="tiny" style="font-weight:700;line-height:1.05">${poi.nome}</div><div style="font-size:9.5px;line-height:1.1;margin-top:1px;color:${poi.rival?'var(--bad)':poi.ativo?'var(--good)':'var(--ink-dim)'}">${poi.ef}</div></div>`:'<div></div>';
   const cafe=`<div class="mapa-cafe"><div style="font-size:25px">☕</div><div class="tiny" style="font-weight:800">Sua cafeteria</div><div style="font-size:10px;color:var(--gold);font-weight:700">⭐ ${repGeral().toFixed(1).replace('.',',')}</div></div>`;
@@ -1675,7 +1705,7 @@ function abreMenu(){
   const seg=(val,opts)=>`<div class="seg">${opts.map(o=>`<button data-v="${o[0]}" class="${val===o[0]?'on':''}">${o[1]}</button>`).join('')}</div>`;
   function render(){
     const n=(S.filiais||[]).length;
-    sheet.innerHTML=`<h3>${n?'Sua rede ☕':'Sua cafeteria'}</h3>
+    sheet.innerHTML=`<h3>${n?'Vossa rede ☕':'Vossa casa de café'}</h3>
       <div class="rowline"><span>Dia</span><b>${S.dia}</b></div>
       <div class="rowline"><span>Patrimônio</span><b style="color:var(--teal)">${brl(patrimonio())}</b></div>
       <div class="rowline"><span>Caixa</span><b>${brl(S.caixa)}</b></div>
@@ -1691,9 +1721,11 @@ function abreMenu(){
       <div class="catbar" style="margin:8px 0 0">Mundo (semente)</div>
       <div class="rowline"><span>🌱 Mundo desta partida</span><b style="font-family:monospace;letter-spacing:.05em">${seedCode(S.seed||0)}</b></div>
       <div class="tiny muted" style="margin:-3px 0 2px;line-height:1.4">Fixe uma semente pra repetir/testar o mesmo mundo no próximo "recomeçar".</div>
-      <div class="row-btns"><input id="mn-seed" placeholder="${PREFS.seedFixa!=null?seedCode(PREFS.seedFixa):'ex.: 1A2B3C'}" value="${PREFS.seedFixa!=null?seedCode(PREFS.seedFixa):''}" style="flex:1;background:var(--bg);border:1px solid var(--line2);border-radius:11px;color:var(--ink);padding:9px 11px;font-family:monospace;font-size:13px;text-transform:uppercase"><button class="cta ghost" id="mn-seed-fix" style="flex:0 0 auto">Fixar</button></div>
+      <input id="mn-seed" placeholder="${PREFS.seedFixa!=null?seedCode(PREFS.seedFixa):'ex.: 1A2B3C'}" value="${PREFS.seedFixa!=null?seedCode(PREFS.seedFixa):''}" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--line2);border-radius:11px;color:var(--ink);padding:10px 12px;font-family:monospace;font-size:13px;text-transform:uppercase">
+      <button class="cta ghost" id="mn-seed-fix">Fixar semente</button>
       ${PREFS.seedFixa!=null?`<div class="tiny" style="color:var(--gold);text-align:center;margin:-1px 0">Próximo jogo: mundo fixo <b>${seedCode(PREFS.seedFixa)}</b> · <span id="mn-seed-rand" style="text-decoration:underline">voltar pra aleatória</span></div>`:''}
       <div class="catbar" style="margin:8px 0 0">Jogo</div>
+      <button class="cta ghost" id="mn-atualizar">⟳ Atualizar o app (pegar a última versão)</button>
       <button class="cta ghost" id="mn-fechar">Voltar ao jogo</button>
       <button class="cta" id="mn-reset" style="background:linear-gradient(180deg,var(--bad),var(--bad-soft));color:#fff">Recomeçar do zero</button>
       <p class="tiny muted" id="mn-conf" ${arm?'':'hidden'} style="text-align:center;margin:0">Toque de novo pra confirmar — perde o progresso.</p>`;
@@ -1703,6 +1735,7 @@ function abreMenu(){
     sheet.querySelector('#mn-restore').addEventListener('click',()=>{ov.remove();restaurarBackup();});
     const sf=sheet.querySelector('#mn-seed-fix'); if(sf)sf.addEventListener('click',()=>{const v=parseSeed(sheet.querySelector('#mn-seed').value); if(v==null){flutua('Código inválido');return;} PREFS.seedFixa=v; salvarPrefs(); flutua('Semente fixa: '+seedCode(v)); render();});
     const sr=sheet.querySelector('#mn-seed-rand'); if(sr)sr.addEventListener('click',()=>{PREFS.seedFixa=null;salvarPrefs();flutua('Semente aleatória');render();});
+    sheet.querySelector('#mn-atualizar').addEventListener('click',()=>{ try{S&&salvar();}catch(e){} flutua('Buscando a última versão…'); setTimeout(()=>location.reload(),300); });
     sheet.querySelector('#mn-fechar').addEventListener('click',()=>ov.remove());
     sheet.querySelector('#mn-reset').addEventListener('click',()=>{if(!arm){arm=true;render();return}apagarSave();S=novoJogo();ov.remove();irManha()});
   }
@@ -1713,7 +1746,7 @@ function restaurarBackup(){
   const sheet=document.createElement('div');sheet.className='sheet';
   sheet.innerHTML=`<h3>📥 Restaurar backup</h3>
     <p class="tiny muted" style="margin:0;line-height:1.4">Cole o texto do backup que você copiou (segure e "Colar"). Isso substitui o jogo atual.</p>
-    <textarea id="bk-txt" placeholder="cole aqui..." style="width:100%;height:90px;background:var(--bg);border:1px solid var(--line2);border-radius:11px;color:var(--ink);padding:10px;font-size:12px;font-family:monospace;resize:none"></textarea>
+    <textarea id="bk-txt" placeholder="cole aqui..." style="width:100%;box-sizing:border-box;height:90px;background:var(--bg);border:1px solid var(--line2);border-radius:11px;color:var(--ink);padding:10px;font-size:12px;font-family:monospace;resize:none"></textarea>
     <div class="row-btns"><button class="cta ghost" id="bk-cancel">Cancelar</button><button class="cta" id="bk-load">Restaurar</button></div>`;
   ov.appendChild(sheet);document.body.appendChild(ov);
   ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()});
