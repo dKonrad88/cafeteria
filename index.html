@@ -467,7 +467,7 @@ function gerarConcorrente(){
 function concorrentePreco(p){ const c=S.concorrente; return justoEff(p)*c.nivelPreco*(c.promoDias>0?0.85:1); }   // preço do rival pro mesmo produto
 /* Ingredientes (matéria-prima). preco = base * mercado (oscila). vol = volatilidade */
 function ingredientesBase(){return{
-  graoComum:   {nome:'Grão comum',emoji:'🫘',base:0.90,vol:.14,qual:.45,seco:true,estoque:0,desbloq:true},
+  graoComum:   {nome:'Grão comum',emoji:'🫘',base:1.30,vol:.14,qual:.45,seco:true,estoque:0,desbloq:true},   // FASE 1: trim de margem (0,90->1,30) p/ aterrar os numeros pos-preparo-correto
   graoEspecial:{nome:'Grão especial',emoji:'🫘',base:1.70,vol:.12,qual:.75,seco:true,estoque:0,desbloq:false},
   graoPremium: {nome:'Grão premium',emoji:'✨',base:2.90,vol:.16,qual:1.0,seco:true,estoque:0,desbloq:false},
   leite:       {nome:'Leite',emoji:'🥛',base:0.85,vol:.09,seco:false,estoque:0,desbloq:true},
