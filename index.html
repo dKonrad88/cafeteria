@@ -398,6 +398,11 @@ const CFG={
   elast:1.95, diasVermelhoMax:3,
   taxaDelivery:0.15, maqLimite:500,           // cafés antes da máquina pedir revisão
   salarioFreela:95,                            // reforço avulso de 1 dia (mais caro que o fixo)
+  // FASE 2 — fit de gosto assimétrico. Um sistema só entrega seus bônus se seus produtos casam com o bairro.
+  naoCasaMult:0.10,        // produto que não casa quase não vende
+  maqManutDia:15,          // manutenção da máquina por nível/dia
+  geladeiraDia:14,         // energia da geladeira por nível/dia
+  clubePorAssinDia:1,      // administração do clube por assinante/dia (leve: clube é base, não decisão)
 };
 const CLIMAS={
   ensolarado:{nome:'Ensolarado',emoji:'☀️',dem:1.05,temp:1},
@@ -422,11 +427,11 @@ const DIAS_SEMANA=[
    pressa→paciência, sensPreco→reação a preço, gostos→o que pedem). Ranges por arquétipo,
    sorteados pela seed → dois bairros do mesmo tipo se parecem, mas nunca são iguais. */
 const BAIRRO_TIPOS={
-  residencial:  {nome:'Residencial',  emoji:'🏘️', tamanho:[33,43], renda:[.35,.60], pressa:[.25,.45], sensPreco:[.50,.70], fdsAmp:[.95,1.15], gostos:{quente:1.10,comida:1.25,refresco:.90,gelado:.85}, vizinhos:['praca','escola']},
-  comercial:    {nome:'Comercial',    emoji:'🏢', tamanho:[52,66], renda:[.50,.75], pressa:[.72,.92], sensPreco:[.40,.60], fdsAmp:[.35,.55], gostos:{quente:1.35,comida:1.00,refresco:.90,gelado:.80}, vizinhos:['predio','concorrente']},
-  universitario:{nome:'Universitário',emoji:'🎓', tamanho:[44,56], renda:[.22,.42], pressa:[.40,.60], sensPreco:[.72,.92], fdsAmp:[.45,.65], gostos:{quente:1.00,comida:1.10,refresco:1.30,gelado:1.25}, vizinhos:['universidade','praca']},
-  boemio:       {nome:'Boêmio',       emoji:'🎭', tamanho:[28,38], renda:[.45,.70], pressa:[.18,.38], sensPreco:[.45,.65], fdsAmp:[1.30,1.60], gostos:{quente:1.15,comida:1.20,refresco:1.05,gelado:1.05}, vizinhos:['praca','concorrente']},
-  turistico:    {nome:'Turístico',    emoji:'🏖️', tamanho:[40,54], renda:[.55,.85], pressa:[.30,.50], sensPreco:[.30,.50], fdsAmp:[1.25,1.55], gostos:{quente:1.00,comida:1.10,refresco:1.30,gelado:1.35}, vizinhos:['orla','concorrente']},
+  residencial:  {nome:'Residencial',  emoji:'🏘️', tamanho:[33,43], renda:[.35,.60], pressa:[.25,.45], sensPreco:[.50,.70], fdsAmp:[.95,1.15], gostos:{quente:1.10,comida:1.25,refresco:.90,gelado:.85}, naoCasa:['gelado','frappe'], vizinhos:['praca','escola']},
+  comercial:    {nome:'Comercial',    emoji:'🏢', tamanho:[52,66], renda:[.50,.75], pressa:[.72,.92], sensPreco:[.40,.60], fdsAmp:[.35,.55], gostos:{quente:1.35,comida:1.00,refresco:.90,gelado:.80}, naoCasa:['gelado','frappe'], vizinhos:['predio','concorrente']},
+  universitario:{nome:'Universitário',emoji:'🎓', tamanho:[44,56], renda:[.22,.42], pressa:[.40,.60], sensPreco:[.72,.92], fdsAmp:[.45,.65], gostos:{quente:1.00,comida:1.10,refresco:1.30,gelado:1.25}, naoCasa:['expresso','cappuccino','mocha'], vizinhos:['universidade','praca']},
+  boemio:       {nome:'Boêmio',       emoji:'🎭', tamanho:[28,38], renda:[.45,.70], pressa:[.18,.38], sensPreco:[.45,.65], fdsAmp:[1.30,1.60], gostos:{quente:1.15,comida:1.20,refresco:1.05,gelado:1.05}, naoCasa:['gelado','frappe'], vizinhos:['praca','concorrente']},
+  turistico:    {nome:'Turístico',    emoji:'🏖️', tamanho:[40,54], renda:[.55,.85], pressa:[.30,.50], sensPreco:[.30,.50], fdsAmp:[1.25,1.55], gostos:{quente:1.00,comida:1.10,refresco:1.30,gelado:1.35}, naoCasa:['expresso','cappuccino','mocha'], vizinhos:['orla','concorrente']},
 };
 /* nomes coerentes com o tipo do bairro */
 const BAIRRO_NOMES={
@@ -442,10 +447,17 @@ function gerarBairro(){
   return { tipo, tipoNome:t.nome, emoji:t.emoji, nome:gerarNomeBairro(tipo),
     tamanho:Math.round(r(t.tamanho)),
     renda:+r(t.renda).toFixed(2), pressa:+r(t.pressa).toFixed(2), sensPreco:+r(t.sensPreco).toFixed(2), fdsAmp:+r(t.fdsAmp).toFixed(2),
-    gostos:Object.assign({},t.gostos), vizinhos:t.vizinhos.slice() };
+    gostos:Object.assign({},t.gostos), naoCasa:(t.naoCasa||[]).slice(), vizinhos:t.vizinhos.slice() };
 }
 function baseCidade(){ return (S.bairro&&S.bairro.tamanho)||CFG.baseCidade; }
-function gostoBairro(p){ return (S.bairro&&S.bairro.gostos[p.cat])||1; }
+function gostoBairro(p){ let g=(S.bairro&&S.bairro.gostos[p.cat])||1;
+  if(S.bairro&&S.bairro.naoCasa&&p._id&&S.bairro.naoCasa.includes(p._id)) g*=CFG.naoCasaMult;   // FASE 2: produto que não casa com o bairro
+  return g; }
+// FASE 2 — fit de um sistema no bairro (média do "casa" dos produtos dele). Gate dos bônus estruturais.
+function _sysFit(ids){ if(!S.bairro||!S.bairro.naoCasa||!S.bairro.naoCasa.length)return 1; let s=0; for(const id of ids)s+=(S.bairro.naoCasa.includes(id)?CFG.naoCasaMult:1); const raw=s/ids.length;
+  return Math.max(0,Math.min(1,(raw-CFG.naoCasaMult)/(1-CFG.naoCasaMult))); }   // 0 quando todos os produtos do sistema não-casam; 1 quando todos casam
+function _maqFit(){ return _sysFit(['expresso','cappuccino','mocha']); }
+function _gelFit(){ return _sysFit(['gelado','frappe']); }
 function fatorDiaSemana(){ const d=DIAS_SEMANA[S.diaSemana%7].dem; return S.bairro? 1+(d-1)*S.bairro.fdsAmp : d; }   // o ritmo da semana depende do caráter do bairro
 /* ===================== CONCORRENTE VIVO (Etapa 3) =====================
    Uma cafeteria rival com PERSONALIDADE (sorteada pela seed). Ela entra na decisão do cliente
@@ -675,7 +687,7 @@ function qualGrao(){return S.ing[S.graoAtivo].qual}
 function ambienteNorm(){return S.rep.ambiente/100}
 function fatorRendaBairro(){ return S.bairro? (0.88+0.26*S.bairro.renda) : 1; }   // bairro rico tolera preço mais alto; popular, menos
 function justoEff(p){ // preço justo sobe com qualidade e ambiente (e com a renda do bairro)
-  return p.justo*fatorRendaBairro()*(1 + 0.10*S.upg.maquina + 0.20*qualGrao()*(p.receita&&p.receita.grao?1:0) + 0.10*ambienteNorm() + 0.06*S.upg.vitrine*(p.tipo==='revenda'?1:0));
+  return p.justo*fatorRendaBairro()*(1 + 0.10*S.upg.maquina*_maqFit() + 0.20*qualGrao()*(p.receita&&p.receita.grao?1:0) + 0.10*ambienteNorm() + 0.06*S.upg.vitrine*(p.tipo==='revenda'?1:0));
 }
 function fatorPreco(p){ return clamp(Math.pow(justoEff(p)/p.preco, CFG.elast), 0.1, 1.9); }
 function seloPreco(p){ const r=p.preco/justoEff(p);
@@ -692,7 +704,7 @@ function dispHoje(p){return naoPerece(p)?Math.max(p.prep,p.estoque||0):p.prep;} 
 function custoRepor(p){return (naoPerece(p)?Math.max(0,p.prep-(p.estoque||0)):p.prep)*custoUnit(p);}  // só o que precisa comprar
 function fatorRep(){return 0.55+(repGeral()/5)*0.9}
 function fatorMkt(){return 1+0.15*S.upg.redes+(S.bonusBase||0)+(S.boost?(S.boost.mult-1):0)}
-function capacidade(){return round(CFG.capBase+S.upg.baristas*CFG.capBarista+S.upg.mesas*CFG.capMesa+S.upg.maquina*CFG.capMaquina+S.upg.treino*6)}
+function capacidade(){return round(CFG.capBase+S.upg.baristas*CFG.capBarista+S.upg.mesas*CFG.capMesa+S.upg.maquina*CFG.capMaquina*_maqFit()+S.upg.treino*6)}   // FASE 2: capacidade da máquina só vale se as bebidas dela casam
 function capacidadeHoje(){return capacidade()+(S.freelaHoje||0)*CFG.capBarista}   // inclui reforço freela do dia
 function repGeral(){const r=S.rep;return (r.custo*.28+r.atendimento*.22+r.qualidade*.20+r.ambiente*.16+r.variedade*.14)/20}
 /* --- clube de assinatura (planos) --- */
@@ -950,14 +962,14 @@ function simularDiaV2(){
     totalVend+=vA+vE; if(usaMaquina(p))usoMaquina+=vA+vE;
   });
   // ---- sobra/perda + fecha porItem ----
-  const porItem=[]; ativos.forEach(p=>{ const sobra=Math.max(0,prepDisp[p._id]), cu=custoUnit(p); if(!naoPerece(p)){ perdaSobra+=sobra*cu*(S.upg.geladeira?0.7:1); perdaSobraFull+=sobra*cu; } const pi=M[p._id]; pi.sobra=round(sobra); pi.guarda=naoPerece(p); porItem.push(pi); });
+  const porItem=[]; ativos.forEach(p=>{ const sobra=Math.max(0,prepDisp[p._id]), cu=custoUnit(p); if(!naoPerece(p)){ perdaSobra+=sobra*cu*(S.upg.geladeira?(1-0.3*_gelFit()):1); perdaSobraFull+=sobra*cu; } const pi=M[p._id]; pi.sobra=round(sobra); pi.guarda=naoPerece(p); porItem.push(pi); });
   // ---- reputação (ambiente SEM wifi/música; SEM bônus de fidelidade — eles agem no cliente) ----
   const filaP=demandaTotal>0?perdidosFila/demandaTotal:0, faltaP=atend>0?totalFaltou/atend:0;
   const alvo={
     custo: clamp(62+(fPrecoMedio-1)*110,5,100),
     ambiente: clamp(52+S.upg.mesas*7+S.upg.ar*12+S.upg.decor*9-filaP*45,5,100),
     atendimento: clamp(56+S.upg.baristas*13+S.upg.treino*10-filaP*55-faltaP*28,5,100),
-    qualidade: clamp(38+S.upg.maquina*12+qualGrao()*30+S.upg.treino*6+S.upg.vitrine*8,5,100),
+    qualidade: clamp(38+S.upg.maquina*12*_maqFit()+qualGrao()*30+S.upg.treino*6+S.upg.vitrine*8,5,100),
     variedade: clamp(30+ativos.length*7+new Set(ativos.map(p=>p.cat)).size*9,5,100),
   };
   const rNovo={}, dRep={};
@@ -983,7 +995,8 @@ function simularDiaV2(){
   const clube=atualizaClube({expostos:vendasPagas,satDia,faltaP,atendFrac});
   const filiais=simulaFiliais();
   const salarios=S.upg.baristas*CFG.salarioBarista+(S.freelaHoje||0)*CFG.salarioFreela;
-  const fixo=CFG.fixoBase+S.upg.mesas*CFG.custoMesaDia+(S.custoFornecedor||0)+(S.contratoFornecedor?S.contratoFornecedor.custoDia:0)+(S.upg.ar?10:0);
+  const fixo=CFG.fixoBase+S.upg.mesas*CFG.custoMesaDia+(S.custoFornecedor||0)+(S.contratoFornecedor?S.contratoFornecedor.custoDia:0)+(S.upg.ar?10:0)
+    +S.upg.maquina*CFG.maqManutDia+S.upg.geladeira*CFG.geladeiraDia+totalAssinantes()*CFG.clubePorAssinDia;   // FASE 2: custos recorrentes (máquina/geladeira/clube)
   const lucro=receita+clube.receita+receitaDeliv+gorjeta+filiais.lucro-custoIng-custoRevenda-perdaSobra-salarios-fixo-conserto;
   ultimoDebugV2={contagem, amostra, nWalk:Math.round(nWalk), regulares, boca:+(S.boca).toFixed(2), satDia:+satDiaAg.toFixed(2), perdidosPreco, perdidosFila:round(perdidosFila),
     foramConcorrente, motivosConc, amostraConc, concReagiu:conc?conc._reagiu:null, concFechou:conc?!!conc._fechou:false, concNivel:conc?conc.nivelPreco:null, concFama:conc?conc.fama:null, concPromo:conc?conc.promoDias:0};
