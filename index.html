@@ -951,7 +951,7 @@ function simularDiaV2(){
     if(p.cat==='gelado'||p.cat==='refresco') af=clima.temp>0?1+clima.temp*0.25:0.6;
     if(p.cat==='quente') af=clima.temp<0?1+(-clima.temp)*0.18:0.85;
     const g=gostoBairro(p), gel=((p.cat==='gelado'||p.cat==='refresco')&&S.upg.geladeira?1+0.12*S.upg.geladeira:1);
-    p._fp=fatorPreco(p); p._peso=p.pop*g*multTend(p)*af*gel;
+    p._af=af; p._gel=gel; p._fp=fatorPreco(p); p._peso=p.pop*g*multTend(p)*af*gel;
     somaPesos+=p._peso; sp+=p.pop*g; spw+=p.pop*g*p._fp;
   });
   const fPrecoMedio=sp>0?spw/sp:1;   // só pra nota de custo-benefício
@@ -988,29 +988,43 @@ function simularDiaV2(){
     its.forEach(id=>{if(S.prod[id].receita&&S.prod[id].receita.grao)usoMaquina+=vend;});
     combosVend+=vend; receitaCombo+=vend*cb.preco; combosRes.push({nomes:its.map(id=>S.prod[id].nome),vend,desc});
   });
-  // ---- AGENTES: walk-ins avulsos, um a um ----
+  // ---- AGENTES: cada walk-in AVALIA o cardápio e ESCOLHE (escolha ponderada, com substituto e fatores que se compensam) ----
   const nAv=Math.round(demanda*(1-fracCombo)*fracAtend);
-  let satSoma=0, satN=0, comprouN=0; const contagem={comprou:0,caro:0,esgotou:0}; const amostra=[];
-  const filaAlta=perdidosFila>demandaTotal*0.15;
+  const filaP0=demandaTotal>0?perdidosFila/demandaTotal:0;
+  let satSoma=0, satN=0, comprouN=0; const contagem={comprou:0,trocou:0,caro:0,esgotou:0}; const amostra=[];
   for(let i=0;i<nAv;i++){
-    const orc=clamp((b.renda??.5)+rnd(-.28,.28),0.05,1.25), sens=clamp((b.sensPreco??.6)+rnd(-.22,.22),0.05,1);
-    let r0=srandom()*somaPesos, quer=ativos[0]; for(const p of ativos){ if((r0-=p._peso)<=0){quer=p;break;} }
-    let prod=quer, motivo='', comprou=false;
-    if(prepDisp[quer._id]<1){ const alt=ativos.filter(p=>prepDisp[p._id]>=1); if(alt.length&&srandom()<0.5) prod=pick(alt); else { motivo='esgotou'; M[quer._id].faltou++; totalFaltou++; } }
-    if(!motivo){
-      const disp=justoEff(prod)*(0.75+orc*0.6), razao=prod.preco/Math.max(0.1,disp);
-      const pOk=clamp(1-sens*clamp(razao-1,0,2.5),0,1);
-      if(srandom()<pOk){ comprou=true; motivo='comprou'; } else { motivo='caro'; perdidosPreco++; }
+    // perfil (nasce do bairro): bolso, sensibilidade a preço, humor (música+clima), horário
+    const orc=clamp((b.renda??.5)+rnd(-.28,.28),0.05,1.25);
+    const sens=clamp((b.sensPreco??.6)+rnd(-.22,.22),0.05,1);
+    const humor=clamp(0.5+rnd(-.2,.2)+0.06*(S.upg.musica||0)+(clima.temp>0?0.04:clima.dem<0.85?-0.06:0),0,1);
+    const manha=srandom()<0.5;
+    // disposição a pagar: bolso × humor × AMBIENTE bom × fila curta (fatores se compensam)
+    const W=(0.72+orc*0.5)*(0.85+0.3*humor)*(1+0.18*(S.rep.ambiente/100-0.5))*(1-0.18*clamp(filaP0,0,1));
+    const qualF=1+0.16*(S.rep.qualidade/100-0.5);
+    const want=p=>{ const mom=manha?(p.cat==='quente'?1.15:(p.cat==='gelado'||p.cat==='refresco')?0.9:1):(p.cat==='quente'?0.95:(p.cat==='gelado'||p.cat==='refresco'||p.cat==='comida')?1.12:1); return p.pop*gostoBairro(p)*multTend(p)*p._af*p._gel*mom*(1+rnd(-.15,.15)); };
+    // desejo (o que MAIS quer) e melhor opção EM ESTOQUE (valor = desejo × aceitação de preço × qualidade)
+    let craving=ativos[0],wc=-1,best=null,vbest=-1,okBest=0;
+    ativos.forEach(p=>{ const w=want(p); if(w>wc){wc=w;craving=p;}
+      if(prepDisp[p._id]>=1){ const razao=p.preco/Math.max(0.1,justoEff(p)*W), ok=clamp(1-sens*clamp(razao-1,0,2.5),0,1), q=(p.receita&&p.receita.grao)?qualF:1, val=w*ok*q; if(val>vbest){vbest=val;best=p;okBest=ok;} } });
+    let motivo,prod=best,comprou=false,fatores='';
+    if(!best){ motivo='esgotou'; totalFaltou++; M[craving._id].faltou++; fatores='nada em estoque'; }
+    else {
+      const aceita=clamp(okBest*(0.55+0.55*humor),0,1);   // humor abre/fecha a carteira
+      if(srandom()<aceita){ comprou=true; prod=best; motivo=(best._id===craving._id)?'comprou':'trocou';
+        fatores = motivo==='trocou' ? `queria ${craving.nome}${prepDisp[craving._id]<1?' (esgotado)':' (achou caro)'} → levou ${best.nome}` : (okBest>0.85?'preço na conta dele':'topou pagar')+(S.rep.ambiente>=65?' · gostou do ambiente':'')+(humor>0.68?' · bom humor':'');
+      } else { motivo=(prepDisp[craving._id]<1)?'esgotou':'caro'; if(motivo==='caro')perdidosPreco++; else {totalFaltou++;M[craving._id].faltou++;}
+        fatores = motivo==='caro' ? ('o preço passou do que topava'+(orc<0.35?' · bolso curto':'')+(sens>0.7?' · liga muito pra preço':'')+(S.rep.ambiente<45?' · ambiente não ajudou':'')) : `${craving.nome} esgotado, não quis outro`;
+      }
     }
     if(comprou){
       prepDisp[prod._id]-=1; M[prod._id].vend++; comprouN++;
       const cu=custoUnit(prod); if(prod.tipo==='revenda')custoRevenda+=cu; else custoIng+=cu;
       const bruto=prod.preco; if(S.upg.delivery){const dv=bruto*0.22;receitaDeliv+=dv*(1-CFG.taxaDelivery);receita+=bruto-dv;}else receita+=bruto;
       totalVend++; if(prod.receita&&prod.receita.grao)usoMaquina++;
-      const sat=clamp(0.6+(prod===quer?0.1:-0.05)+0.05*(S.upg.musica||0)-(filaAlta?0.15:0),0,1); satSoma+=sat; satN++;
+      const sat=clamp(0.55+okBest*0.25+(prod._id===craving._id?0.1:-0.03)+0.05*(S.upg.musica||0)+0.1*(humor-0.5)-(filaP0>0.15?0.15:0),0,1); satSoma+=sat; satN++;
     }
     contagem[motivo]=(contagem[motivo]||0)+1;
-    if(amostra.length<60) amostra.push({orcamento:+orc.toFixed(2),sensPreco:+sens.toFixed(2),queria:quer.nome,levou:comprou?prod.nome:null,motivo});
+    if(amostra.length<80) amostra.push({orcamento:+orc.toFixed(2),sensPreco:+sens.toFixed(2),humor:+humor.toFixed(2),horario:manha?'manhã':'tarde',queria:craving.nome,levou:comprou?prod.nome:null,motivo,fatores:fatores||'—'});
   }
   // ---- clube (café do plano, não paga) + casadinho (paga) por produto, no estoque que sobrou ----
   ativos.forEach(p=>{
@@ -1461,15 +1475,14 @@ function irFechamento(){
     const d=r._debug, c=d.contagem||{};
     const linha=(emo,lbl,n,cor)=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line)"><span>${emo} ${lbl}</span><b style="color:${cor}">${n||0}</b></div>`;
     const am=d.amostra||[], div=[];
-    ['comprou','caro','esgotou'].forEach(mv=>{const cl=am.find(x=>x.motivo===mv);if(cl)div.push(cl);});
+    ['comprou','trocou','caro','esgotou'].forEach(mv=>{const cl=am.find(x=>x.motivo===mv);if(cl)div.push(cl);});
     am.forEach(cl=>{ if(div.length<4&&div.indexOf(cl)<0)div.push(cl); });
-    const cliCard=cl=>{ const bom=cl.motivo==='comprou', cor=bom?'var(--good)':'var(--bad)';
-      const txt=bom?`levou ${cl.levou}`:(cl.motivo==='caro'?`achou o ${cl.queria} caro e saiu`:`queria ${cl.queria}, tinha esgotado`);
-      const orcTxt=cl.orcamento<0.35?'💸 bolso curto':cl.orcamento>0.7?'💰 bolso folgado':'bolso médio';
-      const sensTxt=cl.sensPreco>0.7?'liga muito pra preço':cl.sensPreco<0.4?'nem liga pra preço':'preço na média';
-      return `<div style="background:var(--surface2);border:1px solid var(--line);border-left:3px solid ${cor};border-radius:9px;padding:8px 10px"><div style="font-weight:800;color:${cor};font-size:12.5px">${bom?'✅':'🚫'} ${txt}</div><div style="font-size:11px;color:var(--ink-soft);margin-top:2px">${orcTxt} · ${sensTxt}</div></div>`; };
+    const cliCard=cl=>{ const cor=cl.motivo==='comprou'?'var(--good)':cl.motivo==='trocou'?'var(--gold)':'var(--bad)', ico=cl.motivo==='comprou'?'✅':cl.motivo==='trocou'?'🔄':'🚫';
+      const titulo=cl.motivo==='comprou'?`levou ${cl.levou}`:cl.motivo==='trocou'?`trocou → ${cl.levou}`:(cl.motivo==='caro'?`achou o ${cl.queria} caro`:`${cl.queria} esgotado`);
+      const perfil=`${cl.horario} · ${cl.orcamento<0.35?'bolso curto':cl.orcamento>0.7?'bolso folgado':'bolso médio'} · ${cl.sensPreco>0.7?'sensível a preço':cl.sensPreco<0.4?'não liga pra preço':'preço médio'}${cl.humor>0.66?' · bom humor':cl.humor<0.34?' · mau humor':''}`;
+      return `<div style="background:var(--surface2);border:1px solid var(--line);border-left:3px solid ${cor};border-radius:9px;padding:8px 10px"><div style="font-weight:800;color:${cor};font-size:12.5px">${ico} ${titulo}</div><div style="font-size:11px;color:var(--ink-soft);margin-top:2px">${cl.fatores}</div><div style="font-size:10px;color:var(--ink-dim);margin-top:1px">${perfil}</div></div>`; };
     secCli.innerHTML=`<div style="font-family:var(--font-disp);font-weight:600;font-size:16px">Por que compraram (ou não)</div>
-      <div style="margin:8px 0">${linha('✅','Compraram',c.comprou,'var(--good)')}${linha('💸','Acharam caro',c.caro,'var(--bad)')}${linha('😕','Item esgotado',c.esgotou,'var(--bad)')}</div>
+      <div style="margin:8px 0">${linha('✅','Levaram o que queriam',c.comprou,'var(--good)')}${linha('🔄','Trocaram de produto',c.trocou,'var(--gold)')}${linha('💸','Acharam caro',c.caro,'var(--bad)')}${linha('😕','Item esgotado',c.esgotou,'var(--bad)')}</div>
       <div style="display:flex;flex-direction:column;gap:6px">${div.map(cliCard).join('')}</div>
       <div style="font-size:11px;color:var(--ink-dim);margin-top:9px;line-height:1.4">🗣️ Boca a boca: <b>${Math.round(d.boca*100)}%</b> · 🔁 Fregueses fiéis: <b>${Math.round(d.regulares)}</b>. Cliente feliz volta e traz gente; preço alto e fila afastam.</div>`;
   } else if(btnCli){ btnCli.hidden=true; }
