@@ -1,0 +1,1742 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grão a Grão</title>
+<meta name="description" content="Jogo de gestão de cafeteria: insumos, preço, reputação e um mercado que vive — faça o negócio crescer sem quebrar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#17110d; --bg2:#1d150f;
+    --surface:#241a13; --surface2:#2f2219; --surface3:#3a2b20;
+    --line:#3a2b20; --line2:#4a382b;
+    --ink:#f4ebdd; --ink-soft:#c3ac93; --ink-dim:#8b7c6c;
+    --gold:#e8a94b; --gold-soft:#b98a3d; --crema:#d9b98a;
+    --good:#7fb069; --good-soft:#5f8a4e;
+    --bad:#d96a4a; --bad-soft:#a24f38;
+    --purple:#b08ac9; --teal:#5fa8a0;
+    --glass:rgba(30,22,15,.58); --glass-strong:rgba(24,17,12,.72); --glass-brd:rgba(245,235,221,.14); --glass-hi:rgba(255,250,240,.06);
+    --radius:16px; --shadow:0 8px 30px rgba(0,0,0,.45);
+    --font-disp:"Fraunces",Georgia,serif;
+    --font-ui:"Nunito",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  html,body{height:100%}
+  [hidden]{display:none!important}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-ui);
+    -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;
+    background-image:radial-gradient(120% 80% at 50% -10%, #2a1d13 0%, rgba(42,29,19,0) 60%);
+    background-attachment:fixed;
+  }
+  *{box-sizing:border-box}
+  button{font-family:inherit;cursor:pointer;color:inherit}
+  h1,h2,h3{font-family:var(--font-disp);margin:0;text-wrap:balance;letter-spacing:-.01em}
+
+  #app{max-width:440px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;
+    background:linear-gradient(180deg,var(--bg2),var(--bg));box-shadow:0 0 60px rgba(0,0,0,.5);position:relative;overflow:hidden}
+
+  header#hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;gap:6px;
+    padding:11px 14px;background:var(--glass-strong);backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);
+    border-bottom:1px solid var(--glass-brd);box-shadow:inset 0 1px 0 var(--glass-hi)}
+  .hud-item{display:flex;flex-direction:column;line-height:1.05;flex:1}
+  .hud-item .lbl{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);font-weight:800}
+  .hud-item .val{font-size:16px;font-weight:800}
+  .hud-item .val.money{color:var(--gold)} .hud-item .val.money.neg{color:var(--bad)}
+  #hud-rep-wrap{cursor:pointer}
+  #btn-menu{margin-left:auto;background:none;border:1px solid var(--line);width:32px;height:32px;border-radius:10px;font-size:14px;flex:none;display:grid;place-items:center;color:var(--ink-soft)}
+  #btn-menu:active{background:var(--surface2)}
+
+  main{flex:1;display:flex;flex-direction:column;padding:14px;padding-block:14px 24px;gap:12px}
+  .screen{display:flex;flex-direction:column;gap:12px;animation:rise .26s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.screen,.logo-cup{animation:none}}
+
+  .eyebrow{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--gold-soft);font-weight:800}
+  .muted{color:var(--ink-soft)} .tiny{font-size:12px} .dim{color:var(--ink-dim)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:13px}
+  .card.raised{background:var(--surface2);box-shadow:var(--shadow)}
+  .sec-title{font-family:var(--font-disp);font-size:17px;font-weight:600;margin:4px 2px 0}
+
+  .cta{border:none;border-radius:13px;padding:15px 16px;font-size:16px;font-weight:800;
+    background:linear-gradient(180deg,var(--gold),var(--gold-soft));color:#241400;box-shadow:0 6px 18px rgba(232,169,75,.26);width:100%;
+    transition:transform .08s ease,filter .15s ease}
+  .cta:active{transform:translateY(1px) scale(.995);filter:brightness(1.05)}
+  .cta.ghost{background:none;border:1px solid var(--line2);color:var(--ink);box-shadow:none;font-weight:700}
+  .cta.ghost:active{background:var(--surface2)}
+  .cta:disabled{opacity:.45;filter:grayscale(.4)}
+  .row-btns{display:flex;gap:9px}.row-btns .cta{flex:1}
+
+  /* início */
+  #tela-inicio{align-items:center;text-align:center;justify-content:center;flex:1;gap:9px;padding-top:5vh}
+  .logo-cup{font-size:60px;filter:drop-shadow(0 10px 20px rgba(0,0,0,.5));animation:steam 3s ease-in-out infinite}
+  @keyframes steam{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  #tela-inicio h1{font-size:44px;font-weight:900;line-height:.95}
+  #tela-inicio h1 .a{color:var(--gold)}
+  .tagline{font-family:var(--font-disp);font-style:italic;font-size:15px;color:var(--crema);max-width:24ch}
+  .pitch{color:var(--ink-soft);font-size:13.5px;max-width:31ch;line-height:1.5}
+  #tela-inicio .row-btns{width:100%;margin-top:6px;flex-direction:column}
+
+  /* manhã */
+  .head-dia{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  .head-dia h2{font-size:25px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--line);
+    border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;color:var(--crema)}
+  .chip.trend{border-color:var(--gold-soft);color:var(--gold)}
+  .previsao{display:flex;gap:9px}
+  .previsao .card{flex:1;text-align:center;padding:9px}
+  .previsao .k{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-dim);font-weight:800}
+  .previsao .v{font-size:18px;font-weight:800;margin-top:2px}
+
+  .grao-sel{display:flex;flex-direction:column;gap:8px}
+  .grao-sel .lbl{font-size:12px;font-weight:800;color:var(--ink-soft);display:flex;justify-content:space-between}
+  .grao-opts{display:flex;gap:7px}
+  .grao-opt{flex:1;border:1px solid var(--line2);background:var(--bg);border-radius:11px;padding:8px 6px;text-align:center;line-height:1.2}
+  .grao-opt.on{border-color:var(--gold);background:var(--surface2);box-shadow:0 0 0 1px var(--gold) inset}
+  .grao-opt .gn{font-size:12px;font-weight:800} .grao-opt .gp{font-size:11px;color:var(--gold)} .grao-opt .gq{font-size:10px;color:var(--ink-dim)}
+  .grao-opt.lock{opacity:.5}
+
+  .cat-lbl{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--gold-soft);margin:2px 2px -2px}
+  .item-card{display:flex;flex-direction:column;gap:9px}
+  .item-head{display:flex;align-items:center;gap:8px}
+  .item-head .emoji{font-size:20px}
+  .item-head .nome{font-family:var(--font-disp);font-weight:600;font-size:16px;flex:1}
+  .selo{font-size:10px;font-weight:800;padding:3px 7px;border-radius:999px;white-space:nowrap}
+  .selo.baixo{background:rgba(127,176,105,.18);color:var(--good)}
+  .selo.justo{background:rgba(217,185,138,.16);color:var(--crema)}
+  .selo.alto{background:rgba(217,106,74,.16);color:var(--bad)}
+  .selo.caro{background:rgba(217,106,74,.28);color:#f2a58e}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field .flabel{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--ink-soft)}
+  .field .flabel b{color:var(--ink);font-size:14px}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:99px;
+    background:linear-gradient(90deg,var(--gold) 0%,var(--gold) var(--fill,50%),var(--line2) var(--fill,50%));outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:21px;height:21px;border-radius:50%;background:var(--gold);border:3px solid var(--bg);box-shadow:0 2px 6px rgba(0,0,0,.5)}
+  input[type=range]::-moz-range-thumb{width:19px;height:19px;border-radius:50%;background:var(--gold);border:3px solid var(--bg)}
+  .stepper{display:flex;align-items:center;background:var(--bg);border:1px solid var(--line2);border-radius:11px;overflow:hidden}
+  .stepper button{background:none;border:none;color:var(--gold);font-size:21px;font-weight:800;width:42px;height:42px}
+  .stepper button:active{background:var(--surface2)}
+  .stepper .qtd{flex:1;text-align:center;font-weight:800;font-size:16px}
+  .prep-row{display:flex;align-items:center;gap:10px}
+  .prep-row .prep-cost{font-size:12px;color:var(--ink-soft);font-weight:700;white-space:nowrap}
+  .prep-row .prep-cost b{color:var(--crema)}
+  .resumo-manha{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+  .resumo-manha .g{color:var(--ink-soft);font-weight:700}
+  .resumo-manha .v{font-weight:800}
+
+  /* expediente */
+  #tela-dia{flex:1;justify-content:center;text-align:center;gap:16px}
+  .relogio{font-family:var(--font-disp);font-size:14px;color:var(--ink-soft);font-weight:600;letter-spacing:.05em}
+  .clientes-big{font-size:60px;font-weight:900;font-family:var(--font-disp);line-height:1;color:var(--gold)}
+  .clientes-big .u{font-size:14px;font-family:var(--font-ui);color:var(--ink-soft);display:block;margin-top:6px;font-weight:700}
+  .barra-dia{height:11px;border-radius:99px;background:var(--surface2);overflow:hidden;border:1px solid var(--line)}
+  .barra-dia .fill{height:100%;width:0;background:linear-gradient(90deg,var(--gold-soft),var(--gold))}
+  .toast-area{min-height:60px;display:flex;flex-direction:column;gap:5px;justify-content:center}
+  .toast{background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:7px 11px;font-size:13px;font-weight:700;animation:pop .3s ease both}
+  .toast.good{color:var(--good)} .toast.bad{color:var(--bad)} .toast.event{color:var(--gold);border-color:var(--gold-soft)}
+  @keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+  .caixinha-live{font-size:13px;color:var(--ink-soft);font-weight:700}.caixinha-live b{color:var(--gold);font-size:15px}
+
+  /* fechamento */
+  .lucro-hero{text-align:center;padding:18px 12px}
+  .lucro-hero .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-dim);font-weight:800}
+  .lucro-hero .val{font-family:var(--font-disp);font-size:42px;font-weight:900;line-height:1;margin-top:3px}
+  .lucro-hero .val.pos{color:var(--good)} .lucro-hero .val.neg{color:var(--bad)}
+  .lucro-hero .sub{font-size:12px;color:var(--ink-soft);margin-top:5px;font-weight:700}
+  .linhas{display:flex;flex-direction:column}
+  .linha{display:flex;justify-content:space-between;padding:8px 2px;font-size:13.5px;border-bottom:1px solid var(--line)}
+  .linha:last-child{border-bottom:none}
+  .linha .k{color:var(--ink-soft);font-weight:600}.linha .v{font-weight:800}
+  .linha .v.pos{color:var(--good)}.linha .v.neg{color:var(--bad)}
+  .linha.sub .k{padding-left:14px;color:var(--ink-dim);font-weight:600}.linha.sub{padding:5px 2px;border-bottom:none}
+  .event-card{display:flex;gap:11px;align-items:center}
+  .event-card .ico{font-size:28px}
+  .event-card .txt{font-size:12.5px;line-height:1.4}.event-card .txt b{font-family:var(--font-disp);font-size:14px;display:block;margin-bottom:1px}
+
+  /* reputação painel */
+  .rep-star{display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--font-disp);font-size:30px;font-weight:900}
+  .rep-star .st{color:var(--gold)}
+  .rep-bars{display:flex;flex-direction:column;gap:9px}
+  .rep-row{display:grid;grid-template-columns:118px 1fr auto;align-items:center;gap:9px;font-size:12.5px}
+  .rep-row .rk{font-weight:700;color:var(--ink-soft);display:flex;align-items:center;gap:5px}
+  .rep-track{height:8px;border-radius:99px;background:var(--surface3);overflow:hidden}
+  .rep-track .fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold-soft),var(--gold));transition:width .5s ease}
+  .rep-row .rv{font-weight:800;min-width:26px;text-align:right;font-size:12px}
+  .rep-row .delta{font-size:10px;font-weight:800;margin-left:3px}
+  .delta.up{color:var(--good)}.delta.down{color:var(--bad)}
+
+  /* menu de baixo (liquid glass) — navegação da gestão */
+  .botnav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:440px;display:none;gap:2px;
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));z-index:30;
+    background:var(--glass-strong);backdrop-filter:blur(26px) saturate(1.6);-webkit-backdrop-filter:blur(26px) saturate(1.6);
+    border-top:1px solid var(--glass-brd);box-shadow:0 -8px 26px rgba(0,0,0,.4),inset 0 1px 0 var(--glass-hi)}
+  .botnav.show{display:flex}
+  .tab{flex:1;border:none;background:none;padding:6px 2px;border-radius:13px;font-size:10px;font-weight:800;color:var(--ink-dim);display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1;transition:color .15s}
+  .tab .ti{font-size:20px;transition:transform .15s}
+  .tab.on{color:var(--gold)} .tab.on .ti{transform:scale(1.08)} .tab:active{color:var(--crema)}
+  /* segmented control (iOS) — usado no fechamento e na manhã */
+  .seg{display:flex;gap:3px;background:var(--glass);border:1px solid var(--glass-brd);border-radius:13px;padding:3px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+  .seg button{flex:1;border:none;background:none;color:var(--ink-soft);font-weight:800;font-size:12px;padding:8px 4px;border-radius:10px;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px}
+  .seg button.on{background:var(--surface3);color:var(--gold);box-shadow:0 1px 0 var(--glass-hi) inset}
+  .shop-item{display:flex;align-items:center;gap:11px;padding:11px 12px}
+  .shop-item .ico{font-size:24px;width:32px;text-align:center;flex:none}
+  .shop-item .info{flex:1;min-width:0}
+  .shop-item .nome{font-weight:800;font-size:14.5px}
+  .shop-item .desc{font-size:11.5px;color:var(--ink-soft);line-height:1.35}
+  .shop-item .lvl{font-size:10px;color:var(--gold-soft);font-weight:800;letter-spacing:.08em;margin-top:2px}
+  .buy{flex:none;border:none;border-radius:10px;padding:9px 11px;font-weight:800;font-size:12.5px;background:var(--gold);color:#241400;white-space:nowrap;min-width:72px}
+  .buy:active{filter:brightness(1.06)}
+  .buy.max{background:var(--surface3);color:var(--good);border:1px solid var(--good-soft)}
+  .buy:disabled{background:var(--surface3);color:var(--ink-dim)}
+  .catbar{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--gold-soft);margin:8px 2px 0}
+
+  /* estoque */
+  .ing-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:10px 12px}
+  .ing-row .inm{font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px}
+  .ing-row .meta{font-size:11px;color:var(--ink-soft)}
+  .ing-price{text-align:right;font-weight:800;font-size:13px}
+  .ing-price .arrow{font-size:10px;margin-left:3px}
+  .arrow.up{color:var(--bad)}.arrow.down{color:var(--good)}
+  .ing-buys{display:flex;gap:5px}
+  .mini-buy{border:1px solid var(--line2);background:var(--bg);border-radius:9px;padding:7px 9px;font-weight:800;font-size:12px;color:var(--gold)}
+  .mini-buy:active{background:var(--surface2)}
+
+  /* mapa do bairro */
+  .mapa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;background:radial-gradient(circle at 50% 45%, rgba(95,168,160,.12), transparent 68%);border-radius:12px;padding:6px}
+  .mapa-poi{background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:9px 4px;text-align:center;line-height:1.15;cursor:pointer;min-width:0}
+  .mapa-poi.on{border-color:var(--good-soft)} .mapa-poi.rival{border-color:var(--bad-soft)}
+  .mapa-poi:active{transform:scale(.97)}
+  .mapa-cafe{background:var(--surface3);border:1px solid var(--gold);border-radius:11px;padding:9px 4px;text-align:center;box-shadow:0 0 0 1px var(--gold) inset,0 4px 16px rgba(232,169,75,.2)}
+  /* clube */
+  .clube-hero{text-align:center;padding:14px}
+  .clube-hero .big{font-size:34px;font-weight:900;font-family:var(--font-disp);color:var(--purple)}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .switch{width:50px;height:29px;border-radius:99px;background:var(--surface3);border:1px solid var(--line2);position:relative;flex:none;transition:background .2s}
+  .switch.on{background:var(--good-soft)}
+  .switch .dot{position:absolute;top:2px;left:2px;width:23px;height:23px;border-radius:50%;background:var(--ink);transition:left .2s}
+  .switch.on .dot{left:24px}
+
+  /* carta de oportunidade */
+  #tela-carta{flex:1;justify-content:center;gap:14px}
+  .carta-ico{font-size:52px;text-align:center}
+  .carta-op{display:flex;flex-direction:column;gap:3px;text-align:left;padding:13px 15px;align-items:flex-start}
+  .carta-op .ot{font-weight:800;font-size:15px}
+  .carta-op .od{font-size:12px;color:var(--ink-soft);line-height:1.4}
+
+  /* game over */
+  #tela-fim{flex:1;justify-content:center;text-align:center;gap:11px}
+  #tela-fim .big{font-size:38px} #tela-fim h2{font-size:28px;color:var(--bad)}
+
+  .overlay{position:absolute;inset:0;background:rgba(10,7,5,.5);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);z-index:40;display:flex;align-items:center;justify-content:center;padding:22px;animation:fade .2s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .sheet{background:var(--glass-strong);backdrop-filter:blur(30px) saturate(1.6);-webkit-backdrop-filter:blur(30px) saturate(1.6);border:1px solid var(--glass-brd);border-radius:22px;padding:19px;width:100%;max-width:350px;box-shadow:0 14px 44px rgba(0,0,0,.55),inset 0 1px 0 var(--glass-hi);display:flex;flex-direction:column;gap:11px}
+  .sheet h3{font-size:19px}
+  .sheet .rowline{display:flex;justify-content:space-between;font-size:13px;color:var(--ink-soft)}.sheet .rowline b{color:var(--ink)}
+
+  .toast-fly{position:fixed;left:50%;top:13%;transform:translateX(-50%);z-index:60;background:var(--surface2);border:1px solid var(--gold-soft);color:var(--gold);padding:11px 17px;border-radius:13px;font-weight:800;box-shadow:var(--shadow);max-width:88%;text-align:center;animation:flyin .35s ease both}
+  @keyframes flyin{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translateX(-50%)}}
+</style>
+
+<div id="app">
+  <header id="hud" hidden>
+    <div class="hud-item"><span class="lbl">Dia</span><span class="val" id="hud-dia">1</span></div>
+    <div class="hud-item"><span class="lbl">Caixa</span><span class="val money" id="hud-caixa">R$ 0</span></div>
+    <div class="hud-item" id="hud-rep-wrap"><span class="lbl">Reputação</span><span class="val" id="hud-rep">⭐ 3,0</span></div>
+    <button id="btn-menu" aria-label="Menu">⚙</button>
+  </header>
+
+  <main>
+    <!-- INÍCIO -->
+    <section class="screen" id="tela-inicio">
+      <div class="logo-cup">☕</div>
+      <h1>Grão a <span class="a">Grão</span></h1>
+      <p class="tagline">“grão a grão a galinha enche o papo”</p>
+      <p class="pitch">Você assumiu uma cafeteria de bairro. Compre os grãos na hora certa, acerte o preço, cuide da reputação — e leia o humor da vizinhança, porque ele nunca fica parado.</p>
+      <div class="row-btns">
+        <button class="cta" id="btn-comecar">Assumir a cafeteria ☕</button>
+        <button class="cta ghost" id="btn-continuar" hidden>Continuar de onde parei</button>
+      </div>
+    </section>
+
+    <!-- MANHÃ -->
+    <section class="screen" id="tela-manha" hidden>
+      <div class="head-dia">
+        <div><div class="eyebrow">Manhã</div><h2 id="manha-titulo">Dia 1</h2></div>
+        <div class="chips" id="manha-chips"></div>
+      </div>
+      <div class="previsao">
+        <div class="card"><div class="k">Movimento esperado</div><div class="v" id="manha-esperado">~40</div></div>
+        <div class="card"><div class="k">Você atende até</div><div class="v" id="manha-capacidade">45/dia</div></div>
+      </div>
+      <div class="tiny muted" id="manha-esperado-det" style="text-align:center;margin:-5px 2px 0;line-height:1.45"></div>
+      <div class="seg" id="manha-seg">
+        <button data-sec="cardapio" class="on">☕ Cardápio</button>
+        <button data-sec="ajustes">🎛️ Ajustes do dia</button>
+      </div>
+      <div id="manha-cardapio" style="display:flex;flex-direction:column;gap:11px">
+        <div class="card grao-sel" id="grao-sel" hidden>
+          <div class="lbl"><span>Grão de hoje</span><span class="dim tiny" id="grao-hint"></span></div>
+          <div class="grao-opts" id="grao-opts"></div>
+        </div>
+        <div id="manha-itens" style="display:flex;flex-direction:column;gap:11px"></div>
+      </div>
+      <div id="manha-ajustes" hidden style="display:flex;flex-direction:column;gap:11px"></div>
+      <div class="card resumo-manha">
+        <span class="g">Custo do preparo hoje</span>
+        <span class="v" id="manha-custo">R$ 0,00</span>
+      </div>
+      <button class="cta" id="btn-abrir">Abrir as portas 🔓</button>
+      <p class="tiny muted" style="text-align:center;margin:0">Grãos e leite saem da despensa; o que faltar é comprado ao preço do dia. Sobra de produto pronto é perda.</p>
+    </section>
+
+    <!-- EXPEDIENTE -->
+    <section class="screen" id="tela-dia" hidden>
+      <div class="relogio" id="dia-relogio">07:00</div>
+      <div><div class="clientes-big"><span id="dia-clientes">0</span><span class="u">clientes atendidos</span></div>
+        <div class="tiny muted" id="dia-entraram" style="margin-top:8px;font-weight:700">de 0 que entraram hoje</div></div>
+      <div class="barra-dia"><div class="fill" id="dia-barra"></div></div>
+      <div class="toast-area" id="dia-toasts"></div>
+      <div class="caixinha-live">Caixa registradora: <b id="dia-receita">R$ 0,00</b></div>
+    </section>
+
+    <!-- FECHAMENTO -->
+    <section class="screen" id="tela-fechamento" hidden>
+      <div class="eyebrow">Fim do expediente</div>
+      <h2 id="fech-titulo" style="font-size:23px;margin-top:-4px">Dia 1 fechado</h2>
+      <div class="card raised lucro-hero">
+        <div class="lbl">Lucro do dia</div>
+        <div class="val" id="fech-lucro">R$ 0,00</div>
+        <div class="sub" id="fech-lucro-sub"></div>
+        <div id="fech-star" style="margin-top:9px;font-family:var(--font-disp);font-weight:900;font-size:21px;color:var(--gold)">⭐ <span class="st">3,0</span></div>
+      </div>
+      <div id="fech-metas" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div class="card raised event-card" id="fech-evento" hidden>
+        <div class="ico" id="fech-evento-ico">🌟</div>
+        <div class="txt"><b id="fech-evento-tit">Evento</b><span id="fech-evento-desc"></span></div>
+      </div>
+      <div class="seg" id="fech-seg">
+        <button data-sec="balanco" class="on">🧾 Balanço</button>
+        <button data-sec="movimento">👥 Movimento</button>
+        <button data-sec="rep">⭐ Notas</button>
+      </div>
+      <div id="fech-sec-balanco"><div class="card"><div class="linhas" id="fech-linhas"></div></div></div>
+      <div id="fech-sec-movimento" hidden><div class="card" id="fech-fila" style="font-size:12.5px;line-height:1.5"></div></div>
+      <div id="fech-sec-rep" hidden><div class="card"><div class="rep-bars" id="fech-rep-bars"></div></div></div>
+      <button class="cta" id="btn-pos-dia">Continuar →</button>
+    </section>
+
+    <!-- CARTA DE OPORTUNIDADE -->
+    <section class="screen" id="tela-carta" hidden>
+      <div class="eyebrow" style="text-align:center">Oportunidade</div>
+      <div class="carta-ico" id="carta-ico">📨</div>
+      <h2 id="carta-tit" style="text-align:center;font-size:24px">Título</h2>
+      <p class="pitch" id="carta-desc" style="max-width:34ch;margin:0 auto;text-align:center">Descrição</p>
+      <div id="carta-ops" style="display:flex;flex-direction:column;gap:9px;margin-top:4px"></div>
+    </section>
+
+    <!-- GESTÃO -->
+    <section class="screen" id="tela-gestao" hidden style="padding-bottom:78px">
+      <div class="eyebrow">Entre um dia e outro</div>
+      <h2 style="font-size:23px;margin-top:-4px">Gestão</h2>
+      <div class="card" id="gestao-previsao" style="border-color:var(--gold-soft);padding:11px 13px"></div>
+      <div id="gestao-conteudo" style="display:flex;flex-direction:column;gap:10px"></div>
+      <button class="cta" id="btn-proximo" style="margin-top:4px">Começar o próximo dia →</button>
+    </section>
+
+    <!-- GAME OVER -->
+    <section class="screen" id="tela-fim" hidden>
+      <div class="big">🥀</div>
+      <h2>A conta não fechou</h2>
+      <p class="pitch" style="max-width:32ch" id="fim-texto">Sua cafeteria ficou no vermelho tempo demais e fechou as portas.</p>
+      <div class="previsao" style="width:100%">
+        <div class="card"><div class="k">Dias abertos</div><div class="v" id="fim-dias">0</div></div>
+        <div class="card"><div class="k">Patrimônio máx.</div><div class="v" id="fim-melhor">R$ 0</div></div>
+      </div>
+      <button class="cta" id="btn-recomecar" style="margin-top:6px">Tentar de novo ☕</button>
+    </section>
+  </main>
+  <nav class="botnav" id="botnav">
+    <button class="tab on" data-tab="melhorias"><span class="ti">🛠️</span>Melhorias</button>
+    <button class="tab" data-tab="cardapio"><span class="ti">📋</span>Cardápio</button>
+    <button class="tab" data-tab="estoque"><span class="ti">📦</span>Despensa</button>
+    <button class="tab" data-tab="clube"><span class="ti">🎟️</span>Clube</button>
+    <button class="tab" data-tab="rede"><span class="ti">🏪</span>Rede</button>
+  </nav>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const brl=v=>(v<0?'-':'')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const brl0=v=>'R$ '+Math.round(v).toLocaleString('pt-BR');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+/* ===== PRNG semeado: cada partida é um "mundo" reprodutível; dá pra fixar a seed pra debug ===== */
+let _rng=0;
+function srandom(){ let t=(_rng=(_rng+0x6D2B79F5)|0); t=Math.imul(t^(t>>>15),1|t); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }
+function setSeed(s){ _rng=s|0; }
+function novaSeed(){ return (Math.floor(Math.random()*0xFFFFFFFF))>>>0; }   // entropia real só pra CRIAR a seed
+function seedCode(s){ return ('00000'+(s>>>0).toString(36).toUpperCase()).slice(-6); }
+function parseSeed(code){ const n=parseInt(String(code||'').trim(),36); return isNaN(n)?null:(n>>>0); }
+const rnd=(a,b)=>a+srandom()*(b-a);
+const pick=a=>a[Math.floor(srandom()*a.length)];
+const round=Math.round;
+
+/* ===================== BALANCEAMENTO ===================== */
+const CFG={
+  caixaInicial:300, baseCidade:40, capBase:45,
+  capBarista:35, capMesa:8, capMaquina:8,
+  salarioBarista:60, fixoBase:38, custoMesaDia:3,
+  elast:1.95, diasVermelhoMax:3,
+  taxaDelivery:0.15, maqLimite:500,           // cafés antes da máquina pedir revisão
+  salarioFreela:95,                            // reforço avulso de 1 dia (mais caro que o fixo)
+};
+const CLIMAS={
+  ensolarado:{nome:'Ensolarado',emoji:'☀️',dem:1.05,temp:1},
+  nublado:{nome:'Nublado',emoji:'☁️',dem:0.95,temp:0},
+  chuvoso:{nome:'Chuvoso',emoji:'🌧️',dem:0.72,temp:-.3},
+  quente:{nome:'Calor forte',emoji:'🔥',dem:1.10,temp:2},
+  frio:{nome:'Friozinho',emoji:'🍂',dem:1.06,temp:-2},
+};
+// Dia da semana: movimento de uma cafeteria de bairro (fim de semana puxa mais)
+const DIAS_SEMANA=[
+  {nome:'Domingo',ab:'Dom',dem:0.82},
+  {nome:'Segunda',ab:'Seg',dem:0.9},
+  {nome:'Terça',ab:'Ter',dem:0.96},
+  {nome:'Quarta',ab:'Qua',dem:1.0},
+  {nome:'Quinta',ab:'Qui',dem:1.06},
+  {nome:'Sexta',ab:'Sex',dem:1.16},
+  {nome:'Sábado',ab:'Sáb',dem:1.28},
+];
+/* Ingredientes (matéria-prima). preco = base * mercado (oscila). vol = volatilidade */
+function ingredientesBase(){return{
+  graoComum:   {nome:'Grão comum',emoji:'🫘',base:0.90,vol:.14,qual:.45,seco:true,estoque:0,desbloq:true},
+  graoEspecial:{nome:'Grão especial',emoji:'🫘',base:1.70,vol:.12,qual:.75,seco:true,estoque:0,desbloq:false},
+  graoPremium: {nome:'Grão premium',emoji:'✨',base:2.90,vol:.16,qual:1.0,seco:true,estoque:0,desbloq:false},
+  leite:       {nome:'Leite',emoji:'🥛',base:0.85,vol:.09,seco:false,estoque:0,desbloq:true},
+  chocolate:   {nome:'Chocolate',emoji:'🍫',base:1.20,vol:.10,seco:true,estoque:0,desbloq:true},
+  cha:         {nome:'Folhas de chá',emoji:'🍵',base:0.60,vol:.08,seco:true,estoque:0,desbloq:true},
+  gelo:        {nome:'Gelo',emoji:'🧊',base:0.18,vol:.06,seco:false,estoque:0,desbloq:true},
+}}
+const GRAOS=['graoComum','graoEspecial','graoPremium'];
+/* Produtos. tipo produz => receita de ingredientes ('grao' resolve p/ o grão ativo). tipo revenda => custoCompra */
+function produtosBase(){const P={
+  cafe:      {nome:'Café coado',emoji:'☕',cat:'quente',tipo:'produz',receita:{grao:1},justo:5,min:2,max:12,pop:1.0,ativo:true,prep:35},
+  expresso:  {nome:'Expresso',emoji:'☕',cat:'quente',tipo:'produz',receita:{grao:1.4},justo:6,min:3,max:14,pop:.6,ativo:false,prep:0,exige:'maquina'},
+  cappuccino:{nome:'Cappuccino',emoji:'🥛',cat:'quente',tipo:'produz',receita:{grao:1,leite:1},justo:9,min:5,max:18,pop:.75,ativo:false,prep:0,exige:'maquina'},
+  mocha:     {nome:'Mocha',emoji:'🍫',cat:'quente',tipo:'produz',receita:{grao:1,leite:1,chocolate:1},justo:11,min:6,max:20,pop:.5,ativo:false,prep:0,exige:'maquina'},
+  chocolate: {nome:'Chocolate quente',emoji:'🍫',cat:'quente',tipo:'produz',receita:{leite:1,chocolate:1},justo:8,min:4,max:16,pop:.5,ativo:false,prep:0},
+  cha:       {nome:'Chá',emoji:'🍵',cat:'quente',tipo:'produz',receita:{cha:1},justo:5,min:2,max:12,pop:.4,ativo:false,prep:0},
+  gelado:    {nome:'Café gelado',emoji:'🧊',cat:'gelado',tipo:'produz',receita:{grao:1,leite:.5,gelo:1},justo:8,min:4,max:16,pop:.7,ativo:false,prep:0},
+  frappe:    {nome:'Frappé',emoji:'🧋',cat:'gelado',tipo:'produz',receita:{grao:1,leite:1,gelo:1},justo:12,min:6,max:22,pop:.55,ativo:false,prep:0,exige:'maquina'},
+  agua:      {nome:'Água',emoji:'💧',cat:'refresco',tipo:'revenda',custoCompra:0.8,justo:3,min:1,max:8,pop:.5,ativo:false,prep:0,vol:.15,estoque:0},
+  refri:     {nome:'Refrigerante',emoji:'🥤',cat:'refresco',tipo:'revenda',custoCompra:2.0,justo:5,min:2,max:12,pop:.6,ativo:false,prep:0,vol:.17,estoque:0},
+  suco:      {nome:'Suco natural',emoji:'🧃',cat:'refresco',tipo:'revenda',custoCompra:2.5,justo:7,min:3,max:14,pop:.55,ativo:false,prep:0},
+  paodequeijo:{nome:'Pão de queijo',emoji:'🧀',cat:'comida',tipo:'revenda',custoCompra:1.2,justo:4,min:2,max:10,pop:.75,ativo:false,prep:0},
+  croissant: {nome:'Croissant',emoji:'🥐',cat:'comida',tipo:'revenda',custoCompra:2.2,justo:6,min:3,max:14,pop:.6,ativo:false,prep:0},
+  cinnamon:  {nome:'Cinnamon roll',emoji:'🌀',cat:'comida',tipo:'revenda',custoCompra:2.8,justo:7.5,min:4,max:16,pop:.5,ativo:false,prep:0},
+  cookie:    {nome:'Cookie',emoji:'🍪',cat:'comida',tipo:'revenda',custoCompra:1.0,justo:3.5,min:2,max:9,pop:.6,ativo:false,prep:0},
+  bolo:      {nome:'Fatia de bolo',emoji:'🍰',cat:'comida',tipo:'revenda',custoCompra:2.2,justo:7,min:3,max:15,pop:.55,ativo:false,prep:0},
+};for(const id in P)P[id].preco=P[id].justo;return P;}
+const CATS={quente:'Quentes',gelado:'Gelados',refresco:'Refrescos',comida:'Comidas (revenda)'};
+
+/* Upgrades por categoria */
+const UPGRADES={
+  estrutura:[
+    {id:'maquina',ico:'⚙️',nome:'Máquina de espresso',max:3,custos:[280,650,1500],desc:l=>l?`Nível ${l} · +qualidade, libera bebidas`:'Libera expresso, cappuccino & cia. +qualidade.'},
+    {id:'baristas',ico:'🧑‍🍳',nome:'Contratar barista',max:3,custos:[150,350,700],desc:l=>`Atende +${CFG.capBarista}/dia · R$${CFG.salarioBarista}/dia (${l} na equipe)`},
+    {id:'mesas',ico:'🪑',nome:'Mais mesas',max:3,custos:[180,420,900],desc:l=>`+${CFG.capMesa} clientes/dia e +ambiente`},
+    {id:'geladeira',ico:'🧊',nome:'Geladeira boa',max:2,custos:[220,480],desc:l=>'Libera gelados e reaproveita 30% da sobra'},
+  ],
+  ambiente:[
+    {id:'wifi',ico:'📶',nome:'Wi-Fi decente',max:1,custos:[160],desc:l=>'Pessoal fica mais, trabalha ali. +ambiente'},
+    {id:'musica',ico:'🎵',nome:'Playlist e som',max:1,custos:[140],desc:l=>'Clima aconchegante. +ambiente'},
+    {id:'ar',ico:'❄️',nome:'Ar-condicionado',max:1,custos:[380],desc:l=>'Conforto no calor. +ambiente (conta de luz sobe)'},
+    {id:'decor',ico:'🪴',nome:'Decoração & plantas',max:2,custos:[130,300],desc:l=>'Lugar instagramável. +ambiente'},
+  ],
+  qualidade:[
+    {id:'fornGraoEsp',ico:'🫘',nome:'Fornecedor de grão especial',max:1,custos:[240],desc:l=>'Libera o grão especial na despensa'},
+    {id:'fornGraoPre',ico:'✨',nome:'Grão premium (importado)',max:1,custos:[520],desc:l=>'Libera o grão premium. Café de outro nível.'},
+    {id:'vitrine',ico:'🥐',nome:'Vitrine refrigerada',max:1,custos:[300],desc:l=>'Comidas mais frescas e bonitas. +qualidade'},
+    {id:'treino',ico:'🎓',nome:'Treinar a equipe',max:2,custos:[200,450],desc:l=>'Atende mais rápido e melhor. +atendimento/qualidade'},
+  ],
+  alcance:[
+    {id:'redes',ico:'📣',nome:'Redes sociais',max:3,custos:[120,320,720],desc:l=>`+15% de movimento por nível (nível ${l})`},
+    {id:'delivery',ico:'🛵',nome:'Entrar no delivery',max:1,custos:[260],desc:l=>`Novo canal de vendas (taxa ${round(CFG.taxaDelivery*100)}%)`},
+    {id:'fidelidade',ico:'💳',nome:'Cartão fidelidade',max:1,custos:[220],desc:l=>'Clientes voltam mais. +reputação lenta'},
+  ],
+};
+const CARDAPIO_LOJA=[
+  {id:'paodequeijo',ico:'🧀',nome:'Pão de queijo',custo:120,desc:'Campeão de margem, todo mundo gosta.'},
+  {id:'cookie',ico:'🍪',nome:'Cookie',custo:110,desc:'Baratinho, acompanha o café.'},
+  {id:'croissant',ico:'🥐',nome:'Croissant',custo:220,desc:'Compra da padaria e revende.'},
+  {id:'cinnamon',ico:'🌀',nome:'Cinnamon roll',custo:300,desc:'Ticket alto, cheiro que atrai.'},
+  {id:'bolo',ico:'🍰',nome:'Fatia de bolo',custo:260,desc:'Clássico do café da tarde.'},
+  {id:'cha',ico:'🍵',nome:'Chá',custo:120,desc:'Pra quem não toma café.'},
+  {id:'chocolate',ico:'🍫',nome:'Chocolate quente',custo:180,desc:'Sucesso no frio e com a criançada.'},
+  {id:'expresso',ico:'☕',nome:'Expresso',custo:150,desc:'Curto e forte. Precisa da máquina.',exige:'maquina'},
+  {id:'cappuccino',ico:'🥛',nome:'Cappuccino',custo:220,desc:'Ticket alto. Precisa da máquina.',exige:'maquina'},
+  {id:'mocha',ico:'🍫',nome:'Mocha',custo:300,desc:'Café + chocolate. Precisa da máquina.',exige:'maquina'},
+  {id:'gelado',ico:'🧊',nome:'Café gelado',custo:200,desc:'Refresca no calor. Precisa da geladeira.',exige:'geladeira'},
+  {id:'frappe',ico:'🧋',nome:'Frappé',custo:340,desc:'Sobremesa gelada. Máquina + geladeira.',exige:'maquina',exige2:'geladeira'},
+  {id:'agua',ico:'💧',nome:'Água',custo:70,desc:'Todo mundo pede uma. Margem alta, sempre vende.'},
+  {id:'refri',ico:'🥤',nome:'Refrigerante',custo:140,desc:'Pra quem não quer café. Vende no calor.'},
+  {id:'suco',ico:'🧃',nome:'Suco natural',custo:200,desc:'Refrescante e natural. Bom no calor.'},
+];
+/* Tendências do bairro */
+const TENDENCIAS=[
+  {id:'normal',nome:'Bairro tranquilo',emoji:'🍃',dur:[4,7],efeito:{}},
+  {id:'coldbrew',nome:'Onda de gelados',emoji:'🧊',dur:[4,7],efeito:{cat:{gelado:1.6,quente:.85}}},
+  {id:'matcha',nome:'Febre de chá & matcha',emoji:'🍵',dur:[3,6],efeito:{prod:{cha:2.2}}},
+  {id:'inverno',nome:'Inverno pede quente',emoji:'🧣',dur:[5,8],efeito:{cat:{quente:1.4,gelado:.5},prod:{chocolate:1.6}}},
+  {id:'croissant',nome:'Trend de croissant',emoji:'🥐',dur:[3,6],efeito:{prod:{croissant:2.0,cinnamon:1.5}}},
+  {id:'movimento',nome:'Bairro em alta',emoji:'📈',dur:[3,5],efeito:{geral:1.25}},
+  {id:'fit',nome:'Semana fitness',emoji:'🥗',dur:[3,5],efeito:{cat:{comida:.6}}},
+  {id:'estudante',nome:'Point dos estudantes',emoji:'🎓',dur:[5,9],efeito:{geral:1.15,prod:{cafe:1.3}}},
+];
+/* Cartas de oportunidade (dilemas) — cond define quando pode aparecer */
+const CARTAS=[
+  {id:'fornecedor',ico:'🤝',cond:s=>s.dia>=3&&!s.flags.fornDesc,tit:'Proposta de fornecedor',desc:'Um distribuidor oferece 20% de desconto nos grãos — mas cobra uma mensalidade fixa de R$25/dia.',
+   ops:[{txt:'Fechar contrato',od:'−R$25/dia · grãos 20% + baratos · dá pra cancelar depois',ef:s=>{s.flags.fornDesc=true;s.contratoFornecedor={desc:0.2,custoDia:25};}},{txt:'Deixar quieto',od:'Segue comprando avulso',ef:s=>{s.flags.fornDesc=true;}}]},
+  {id:'influencer',ico:'📸',cond:s=>s.dia>=4&&repGeral(s)>=2.8&&!s.flags.influ,tit:'Influencer quer parceria',desc:'Uma criadora de conteúdo topa postar sua cafeteria por R$150. Costuma lotar por alguns dias.',
+   ops:[{txt:'Pagar R$150',od:'Grande boost de movimento por ~4 dias',ef:s=>{if(s.caixa>=150){s.caixa-=150;s.boost={dias:4,mult:1.5};}s.flags.influ=true;}},{txt:'Agora não',od:'Guarda o dinheiro',ef:s=>{s.flags.influ=true;}}]},
+  {id:'ponto',ico:'🏢',cond:s=>s.dia>=6&&!s.flags.ponto,tit:'Prédio comercial abriu ao lado',desc:'Muita gente de escritório passando de manhã. Vale ajustar o negócio pra pegar esse fluxo?',
+   ops:[{txt:'Focar no café rápido',od:'+movimento fixo de manhã',ef:s=>{s.bonusBase+=0.12;s.flags.ponto=true;}},{txt:'Manter o clima calmo',od:'+ambiente, sem correria',ef:s=>{s.rep.ambiente=clamp(s.rep.ambiente+8,0,100);s.flags.ponto=true;}}]},
+  {id:'aluguel',ico:'📈',cond:s=>s.dia>=9&&!s.flags.aluguel,tit:'Reajuste do aluguel',desc:'O dono do ponto quer reajustar. Dá pra negociar um contrato mais longo.',
+   ops:[{txt:'Assinar 2 anos',od:'Custo fixo sobe pouco (+R$6/dia)',ef:s=>{s.custoFornecedor=(s.custoFornecedor||0)+6;s.flags.aluguel=true;}},{txt:'Contrato curto',od:'+R$14/dia, mas sem amarra',ef:s=>{s.custoFornecedor=(s.custoFornecedor||0)+14;s.flags.aluguel=true;}}]},
+  {id:'evento',ico:'🎪',cond:s=>s.dia>=7&&!s.flags.evento,tit:'Feira de rua no fim de semana',desc:'A associação do bairro convida sua cafeteria pra montar um ponto na feira. Custa R$80 a barraca.',
+   ops:[{txt:'Montar barraca',od:'−R$80 agora, muito movimento amanhã',ef:s=>{if(s.caixa>=80){s.caixa-=80;s.boost={dias:2,mult:1.7};}s.flags.evento=true;}},{txt:'Ficar só na loja',od:'Sem gastos extras',ef:s=>{s.flags.evento=true;}}]},
+];
+/* Eventos rápidos do dia (surpresa no expediente) */
+// Eventos: cada um só entra no sorteio quando `cond(S)` permite (ou sem cond = sempre).
+// A MAIORIA dos dias é "Dia comum" (neutro, sem card). tit/desc podem ser função do estado.
+const EVENTOS=[
+  // --- comum: peso alto, então a maior parte dos dias é tranquila ---
+  {p:60,tipo:'neutro',ico:'🍃',tit:'Dia comum',desc:()=>pick(['Só o giro normal do balcão.','Nada de especial, movimento de sempre.','Um dia tranquilo, sem surpresas.','Dia de rotina: abre, serve, fecha.'])},
+  // --- bons ---
+  {p:7,tipo:'bom',ico:'🌟',tit:'Viralizou nas redes!',desc:s=>`Alguém postou o seu ${nomeProdutoFoto(s)} e a foto bombou. Movimento em alta.`,dem:1.35,rep:{ambiente:2}},
+  {p:6,tipo:'bom',ico:'😍',tit:'Cliente virou fã',cond:s=>repGeral()>=3.3,desc:s=>`Um cliente elogiou o seu ${nomeProdutoFoto(s)} e prometeu voltar sempre.`,rep:{atendimento:2},dem:1.08},
+  {p:6,tipo:'bom',ico:'🎉',tit:'Evento no bairro',desc:()=>pick(['Feira de rua no quarteirão encheu a calçada.','Show na praça trouxe gente pra todo canto.','Um bloco passou na porta e parou pra um café.']),dem:1.27},
+  {p:5,tipo:'bom',ico:'🏢',tit:'Encomenda de escritório',desc:'Pediram bastante café pra uma reunião logo cedo.',dem:1.18},
+  {p:5,tipo:'bom',ico:'🧑‍🎓',tit:'Turma de estudantes',desc:'Um grupo ficou a tarde toda nas mesas, pedindo café.',dem:1.14},
+  {p:4,tipo:'bom',ico:'☀️',tit:'Tempo bom lotou a rua',cond:s=>['ensolarado','quente'].includes(s.climaHoje),desc:'O sol trouxe todo mundo pra fora — deu movimento.',dem:1.2},
+  {p:4,tipo:'bom',ico:'📰',tit:'Recomendaram num blog',cond:s=>repGeral()>=3,desc:'Um blog de gastronomia elogiou a sua cafeteria.',rep:{qualidade:2},dem:1.13},
+  // --- ruins (mais raros; os de "estrutura" só depois de pegar o jeito) ---
+  {p:5,tipo:'ruim',ico:'📉',tit:'Concorrente em promoção',desc:()=>pick(['A rede da esquina baixou o preço e levou clientes.','Abriu uma cafeteria nova perto, com combo agressivo.']),dem:.82},
+  {p:4,tipo:'ruim',ico:'🤒',tit:'Dia difícil no balcão',cond:s=>s.dia>=3,desc:s=>s.upg.baristas>0?'Um barista faltou e a fila cresceu.':'Você acordou mal e o balcão rendeu menos.',cap:.78},
+  {p:4,tipo:'ruim',ico:'🌧️',tit:'Chuva esvaziou a rua',cond:s=>s.climaHoje==='chuvoso',desc:'Poucos toparam encarar a chuva por um café.',dem:.78},
+  {p:4,tipo:'ruim',ico:'💸',tit:s=>cap1(nomeIngredienteCaro())+' disparou',cond:s=>ingredienteCaroAlto(),desc:s=>`O ${nomeIngredienteCaro()} subiu forte no fornecedor e apertou a margem.`},
+  {p:4,tipo:'ruim',ico:'😤',tit:'Reclamaram do preço',cond:s=>algumProdutoCaro(),desc:s=>{const p=produtoMaisSalgado();return `Cliente resmungou que o ${p?p.nome.toLowerCase():'café'} está salgado pro que entrega.`},rep:{custo:-3}},
+  {p:4,tipo:'ruim',ico:'⏳',tit:'A fila de ontem pegou mal',cond:s=>s.diag&&s.diag.perdidosFila>=6,desc:'Ainda comentam da fila enorme de ontem — alguns nem voltaram.',rep:{atendimento:-3}},
+  {p:3,tipo:'ruim',ico:'🧹',tit:'Reclamação de higiene',cond:s=>s.rep.ambiente<42,desc:'Reclamaram de mesa suja. Pega mal pro ambiente.',rep:{ambiente:-3}},
+  {p:4,tipo:'ruim',ico:'🚧',tit:'Obra na calçada',cond:s=>s.dia>=3,desc:'Britadeira na porta espantou parte do movimento.',dem:.82},
+];
+function pickTxt(v){return typeof v==='function'?v(S):v}
+function nomeProdutoFoto(s){const a=Object.values(s.prod).filter(p=>p.ativo);const b=a.filter(p=>p.cat!=='comida');const l=b.length?b:a;const p=l[Math.floor(srandom()*l.length)];return p?p.nome.toLowerCase():'cafezinho';}
+function cap1(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s}
+function ingredienteCaroInfo(){let id=null,max=0;for(const k in S.ing){if(!S.ing[k].desbloq)continue;const m=S.mercado[k]??1;if(m>max){max=m;id=k}}return{id,alto:max>1.22}}
+function nomeIngredienteCaro(){const i=ingredienteCaroInfo();return i.id?S.ing[i.id].nome.toLowerCase():'grão'}
+function ingredienteCaroAlto(){return ingredienteCaroInfo().alto}
+function produtoMaisSalgado(){const a=produtosAtivos();if(!a.length)return null;return a.reduce((x,y)=>(y.preco/justoEff(y)>x.preco/justoEff(x))?y:x)}
+function algumProdutoCaro(){const p=produtoMaisSalgado();return p&&(p.preco/justoEff(p))>1.22}
+
+/* ===================== ESTADO ===================== */
+const SAVE_KEY='graoagrao_v2';
+let S=null, simResultado=null, animTimer=null, gestaoTab='melhorias', redeInfoAberto=false;
+
+function novoJogo(){
+  const seed=(PREFS.seedFixa!=null?PREFS.seedFixa:novaSeed())>>>0;   // seed fixa (debug) ou aleatória
+  setSeed(seed);
+  return{
+    dia:1, caixa:CFG.caixaInicial, seed, rngState:seed,
+    rep:{custo:64,ambiente:54,atendimento:58,qualidade:52,variedade:45},
+    ing:ingredientesBase(), prod:produtosBase(),
+    graoAtivo:'graoComum',
+    upg:{maquina:0,baristas:0,mesas:0,geladeira:0,wifi:0,musica:0,ar:0,decor:0,fornGraoEsp:0,fornGraoPre:0,vitrine:0,treino:0,redes:0,delivery:0,fidelidade:0},
+    mercado:{}, clube:{planos:[]}, combos:[{ativo:false,itens:[],preco:0},{ativo:false,itens:[],preco:0}], combosSalvos:[],
+    tend:{id:'normal',dias:5}, boost:null, bonusBase:0, custoFornecedor:0, contratoFornecedor:null,
+    flags:{}, diasVermelho:0, melhorDia:0, climaHoje:pick(Object.keys(CLIMAS)),
+    maq:{uso:0}, diaSemana:Math.floor(srandom()*7), freelaHoje:0,
+    filiais:[], emprestimo:null, metasVistas:[], patrimonioPico:CFG.caixaInicial,
+  };
+}
+function salvar(){try{if(S)S.rngState=_rng;localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}
+function carregar(){try{const r=localStorage.getItem(SAVE_KEY);if(!r)return null;return sanear(JSON.parse(r))}catch(e){return null}}
+function sanear(s){ if(!s.clube||!Array.isArray(s.clube.planos)) s.clube={planos:[]}; if(!Array.isArray(s.combos)) s.combos = s.combo ? [s.combo] : []; while(s.combos.length<2) s.combos.push({ativo:false,itens:[],preco:0}); delete s.combo; if(!s.maq)s.maq={uso:0};
+  if(s.seed==null) s.seed=novaSeed();                        // save antigo sem seed → ganha um mundo agora
+  setSeed(s.rngState!=null? s.rngState : s.seed);            // continua de onde parou (ou do começo do mundo)
+  if(s.diaSemana==null)s.diaSemana=Math.floor(srandom()*7); if(s.freelaHoje==null)s.freelaHoje=0;
+  if(!Array.isArray(s.filiais)) s.filiais=[]; if(!Array.isArray(s.metasVistas)) s.metasVistas=[]; if(!('emprestimo' in s)) s.emprestimo=null; if(s.patrimonioPico==null) s.patrimonioPico=s.caixa||0;
+  if(!Array.isArray(s.combosSalvos)) s.combosSalvos=[];
+  return s; }
+function apagarSave(){try{localStorage.removeItem(SAVE_KEY)}catch(e){}}
+/* preferências (persistem separadas do save — não somem ao recomeçar) */
+let PREFS={velExp:'normal', menosMov:false, seedFixa:null};
+function carregarPrefs(){try{const r=localStorage.getItem('graoagrao_prefs');if(r)PREFS=Object.assign(PREFS,JSON.parse(r))}catch(e){}}
+function salvarPrefs(){try{localStorage.setItem('graoagrao_prefs',JSON.stringify(PREFS))}catch(e){}}
+
+/* ===================== MERCADO / PREÇOS ===================== */
+function precoIng(id){const i=S.ing[id];const m=S.mercado[id]??1;let p=i.base*m;if(S.contratoFornecedor&&GRAOS.includes(id))p*=(1-S.contratoFornecedor.desc);return p;}
+function passoMercado(){
+  for(const id in S.ing){
+    const i=S.ing[id]; let m=S.mercado[id]??1;
+    m += rnd(-i.vol,i.vol);                       // caminhada aleatória
+    if(srandom()<0.06) m += rnd(-.25,.25);    // choque ocasional
+    m += (1-m)*0.05;                              // leve reversão à média
+    S.mercado[id]=clamp(m,0.65,1.6);
+  }
+  // bebidas lacradas (água/refri) também têm mercado — dá pra estocar na promoção
+  NAO_PERECE.forEach(id=>{ const p=S.prod[id]; if(!p)return; let m=S.mercado[id]??1; m+=rnd(-(p.vol||.1),(p.vol||.1)); if(srandom()<0.06)m+=rnd(-.22,.22); m+=(1-m)*0.05; S.mercado[id]=clamp(m,0.7,1.5); });
+  // tendência do bairro
+  S.tend.dias--;
+  if(S.tend.dias<=0){ const t=pick(TENDENCIAS); S.tend={id:t.id,dias:round(rnd(t.dur[0],t.dur[1]))}; }
+  // boost temporário (influencer/feira)
+  if(S.boost){ S.boost.dias--; if(S.boost.dias<=0) S.boost=null; }
+}
+function tendObj(){return TENDENCIAS.find(t=>t.id===S.tend.id)||TENDENCIAS[0]}
+function multTend(p){
+  const e=tendObj().efeito||{}; let m=e.geral||1;
+  if(e.cat&&e.cat[p.cat]) m*=e.cat[p.cat];
+  if(e.prod&&e.prod[p._id]) m*=e.prod[p._id];
+  return m;
+}
+
+/* custo unitário de um produto, ao preço do dia */
+function custoUnit(p){
+  if(p.tipo==='revenda') return naoPerece(p) ? p.custoCompra*(S.mercado[p._id]??1) : p.custoCompra;   // lacrados oscilam no mercado (dá pra estocar na promoção)
+  let c=0; for(const ing in p.receita){ const real=ing==='grao'?S.graoAtivo:ing; c+=p.receita[ing]*precoIng(real); }
+  return c;
+}
+function qualGrao(){return S.ing[S.graoAtivo].qual}
+function ambienteNorm(){return S.rep.ambiente/100}
+function justoEff(p){ // preço justo sobe com qualidade e ambiente
+  return p.justo*(1 + 0.10*S.upg.maquina + 0.20*qualGrao()*(p.receita&&p.receita.grao?1:0) + 0.10*ambienteNorm() + 0.06*S.upg.vitrine*(p.tipo==='revenda'?1:0));
+}
+function fatorPreco(p){ return clamp(Math.pow(justoEff(p)/p.preco, CFG.elast), 0.1, 1.9); }
+function seloPreco(p){ const r=p.preco/justoEff(p);
+  if(r<=0.9) return {cls:'baixo',txt:'😍 barato'};
+  if(r<=1.12) return {cls:'justo',txt:'👍 justo'};
+  if(r<=1.4) return {cls:'alto',txt:'😐 salgado'};
+  return {cls:'caro',txt:'😠 caro demais'};
+}
+function produtosAtivos(){return Object.entries(S.prod).filter(([,p])=>p.ativo).map(([id,p])=>{p._id=id;return p})}
+/* itens LACRADOS: não estragam — a sobra volta pro estoque e você só paga a reposição */
+const NAO_PERECE=['agua','refri'];
+function naoPerece(p){return NAO_PERECE.includes(p._id);}
+function dispHoje(p){return naoPerece(p)?Math.max(p.prep,p.estoque||0):p.prep;}      // disponível hoje (lacrado soma o que sobrou)
+function custoRepor(p){return (naoPerece(p)?Math.max(0,p.prep-(p.estoque||0)):p.prep)*custoUnit(p);}  // só o que precisa comprar
+function fatorRep(){return 0.55+(repGeral()/5)*0.9}
+function fatorMkt(){return 1+0.15*S.upg.redes+(S.bonusBase||0)+(S.boost?(S.boost.mult-1):0)}
+function capacidade(){return round(CFG.capBase+S.upg.baristas*CFG.capBarista+S.upg.mesas*CFG.capMesa+S.upg.maquina*CFG.capMaquina+S.upg.treino*6)}
+function capacidadeHoje(){return capacidade()+(S.freelaHoje||0)*CFG.capBarista}   // inclui reforço freela do dia
+function repGeral(){const r=S.rep;return (r.custo*.28+r.atendimento*.22+r.qualidade*.20+r.ambiente*.16+r.variedade*.14)/20}
+/* --- clube de assinatura (planos) --- */
+function totalAssinantes(){return S.clube.planos.reduce((a,p)=>a+(p.assinantes||0),0)}
+function precoMedioBebidas(pl){const bs=pl.bebidas.filter(b=>S.prod[b]);if(!bs.length)return 6;return bs.reduce((a,b)=>a+S.prod[b].preco,0)/bs.length}
+function receitaClubeMes(){return S.clube.planos.reduce((a,p)=>a+(p.assinantes||0)*p.preco,0)}
+function demandaAssinantes(){const d={};S.clube.planos.forEach(pl=>{const n=pl.assinantes||0;if(n<=0)return;const bs=pl.bebidas.filter(b=>S.prod[b]&&S.prod[b].ativo);if(!bs.length)return;const c=n*(pl.cota/30);bs.forEach(b=>d[b]=(d[b]||0)+c/bs.length)});return d}
+// Assinantes EMERGEM: cada cliente satisfeito de hoje tem uma pequena CHANCE (sorteada) de assinar.
+// Nada de fórmula fixa — um dia bom converte alguns, um ruim converte zero, e nunca é igual.
+// Pagamento real: paga a mensalidade cheia no dia (pico de caixa) e renova a cada 30 dias (coortes).
+function atualizaClube(ctx){
+  ctx=ctx||{}; const expostos=Math.max(0,ctx.expostos||0), satDia=ctx.satDia??0.6, faltaP=ctx.faltaP||0, atendFrac=clamp(ctx.atendFrac??1,0,1);
+  let receita=0, novos=0, renovados=0, cancelados=0; const novosPorPlano=[];
+  S.clube.planos.forEach((pl,i)=>{
+    // coortes por CRÉDITO: {qtd, usados} — usados = cafés já consumidos por assinante; renova ao esgotar a cota
+    if(!Array.isArray(pl.coortes)) pl.coortes=[];
+    pl.coortes=pl.coortes.map(c=> c.usados==null ? {qtd:c.qtd, usados:0} : c);   // migra coortes antigas (que usavam prazo)
+    const atual=pl.coortes.reduce((a,c)=>a+c.qtd,0);
+    const bs=pl.bebidas.filter(b=>S.prod[b]&&S.prod[b].ativo);
+    // --- ENTRADAS: sorteio cliente a cliente (paga a mensalidade cheia hoje) ---
+    let entram=0;
+    if(bs.length){
+      const valorMensal=pl.cota*precoMedioBebidas(pl);
+      const economia=valorMensal>0?clamp(1-pl.preco/valorMensal,-0.6,0.9):0;   // desconto do plano vs avulso
+      const flex=pl.bebidas.length>1?1.15:1;
+      const p=clamp((0.015+economia*0.05)*(0.5+repGeral()/4)*(0.4+satDia)*flex,0,0.12);
+      for(let k=0;k<expostos;k++){ if(srandom()<p) entram++; }
+      if(entram>0){ novos+=entram; receita+=entram*pl.preco; pl.coortes.push({qtd:entram, usados:0}); novosPorPlano.push({nome:pl.nome||('Plano '+(i+1)), qtd:entram}); }
+    }
+    // --- CANCELAMENTOS: quem teve má experiência pode sair (perde os créditos que faltavam) ---
+    const chanceCancel=clamp(0.008+faltaP*0.25+(repGeral()<2.5?0.03:0),0,0.2);
+    let saem=0; for(let k=0;k<atual;k++){ if(srandom()<chanceCancel) saem++; }
+    if(saem>0){ cancelados+=saem; let rem=saem; pl.coortes.sort((a,b)=>b.usados-a.usados); for(const c of pl.coortes){const t=Math.min(rem,c.qtd);c.qtd-=t;rem-=t;if(rem<=0)break;} pl.coortes=pl.coortes.filter(c=>c.qtd>0); }
+    // --- CONSUMO + RENOVAÇÃO POR CRÉDITO: gasta a cota conforme vem tomar café; ao esgotar os X, paga de novo ---
+    if(bs.length){
+      pl.coortes.forEach(c=>{
+        c.usados += (pl.cota/30)*atendFrac;             // só conta o café que ele conseguiu tomar (se faltou, não gasta crédito)
+        while(c.usados>=pl.cota){ receita+=c.qtd*pl.preco; renovados+=c.qtd; c.usados-=pl.cota; }
+      });
+    }
+    pl.assinantes=pl.coortes.reduce((a,c)=>a+c.qtd,0);
+  });
+  return {receita, novos, renovados, cancelados, novosPorPlano};
+}
+
+/* ===================== REDE / EXPANSÃO (comprar mais cafeterias) ===================== */
+// A marca é o ativo: quanto melhor a sua reputação, mais as filiais rendem. Nada de renda fixa —
+// cada filial fatura conforme a FORÇA DA MARCA hoje, o bairro dela (que oscila) e a maturidade (ela demora a engrenar).
+const FILIAL_CUSTO=[2500,6000,14000,30000,60000];
+const BAIRROS_FILIAL=[
+  {nome:'Centro',emoji:'🏙️'},{nome:'Orla',emoji:'🏖️'},{nome:'Vila',emoji:'🏘️'},
+  {nome:'Universitário',emoji:'🎓'},{nome:'Comercial',emoji:'🏢'},{nome:'Praça',emoji:'⛲'},
+];
+const REP_EXPANDIR=3.6;                                    // só franqueia quem tem marca forte
+function custoNovaFilial(){const n=(S.filiais||[]).length;return FILIAL_CUSTO[n]??Math.round(FILIAL_CUSTO[FILIAL_CUSTO.length-1]*Math.pow(2,n-FILIAL_CUSTO.length+1));}
+function podeExpandir(){return repGeral()>=REP_EXPANDIR;}
+function valorFiliais(){return (S.filiais||[]).reduce((a,f)=>a+(f.invest||0),0);}
+function dividaAtual(){return S.emprestimo?S.emprestimo.saldo:0;}
+function patrimonio(){return Math.round(S.caixa + valorFiliais() - dividaAtual());}
+function abrirFilial(){
+  if(!podeExpandir()){flutua(`Precisa de ⭐${REP_EXPANDIR.toFixed(1).replace('.',',')}+ pra franquear a marca`);return false;}
+  const custo=custoNovaFilial(); if(S.caixa<custo){flutua('Caixa insuficiente pra essa filial');return false;}
+  const usados=new Set((S.filiais||[]).map(f=>f.nome));
+  const livres=BAIRROS_FILIAL.filter(b=>!usados.has(b.nome));
+  const b=pick(livres.length?livres:BAIRROS_FILIAL);
+  S.caixa-=custo;
+  S.filiais.push({nome:b.nome,emoji:b.emoji,potencial:round(rnd(240,330)),aluguel:38,salarioGerente:88,bairro:rnd(0.92,1.08),dias:0,invest:custo});
+  salvar();atualizaHud();flutua(`${b.emoji} Cafeteria do ${b.nome} inaugurada!`);
+  return true;
+}
+// roda uma vez por dia (dentro de simularDia): amadurece e sorteia o faturamento de cada filial
+function simulaFiliais(){
+  let bruto=0,custo=0,lucro=0; const det=[];
+  const brand=repGeral()/5;                                 // 0..1 — a marca puxa todas as filiais juntas
+  (S.filiais||[]).forEach(f=>{
+    f.dias=(f.dias||0)+1;
+    f.bairro=clamp((f.bairro??1)+rnd(-0.05,0.05),0.6,1.4);   // o bairro da filial tem sua própria maré
+    const maturidade=clamp(f.dias/20,0.25,1);               // engata em ~20 dias
+    const fat=Math.max(0, f.potencial*maturidade*(0.35+0.8*brand)*f.bairro*rnd(0.82,1.18));
+    const cst=f.aluguel+f.salarioGerente;
+    const luc=fat-cst;
+    bruto+=fat; custo+=cst; lucro+=luc;
+    det.push({nome:f.nome,emoji:f.emoji,fat:round(fat),lucro:round(luc),dias:f.dias,novata:f.dias<=14});
+  });
+  return {bruto:round(bruto),custo:round(custo),lucro:round(lucro),det};
+}
+
+/* ===================== METAS / MARCOS (sensação de evoluir) ===================== */
+const METAS=[
+  {id:'caixa1k',ico:'💰',txt:'R$ 1.000 no caixa — o negócio deu tração',cond:()=>S.caixa>=1000},
+  {id:'rep4',ico:'⭐',txt:'Reputação 4,0 — virou referência no bairro',cond:()=>repGeral()>=4},
+  {id:'assin10',ico:'🎟️',txt:'10 assinantes no Clube',cond:()=>totalAssinantes()>=10},
+  {id:'caixa5k',ico:'💵',txt:'R$ 5.000 no caixa',cond:()=>S.caixa>=5000},
+  {id:'expandir',ico:'🗺️',txt:'Marca forte o bastante pra franquear — pode abrir a 2ª cafeteria!',cond:()=>podeExpandir()&&S.filiais.length===0},
+  {id:'filial1',ico:'🏪',txt:'Abriu a 2ª cafeteria — nasceu uma rede',cond:()=>S.filiais.length>=1},
+  {id:'rede3',ico:'🏙️',txt:'4 cafeterias — sua marca espalhou pela cidade',cond:()=>S.filiais.length>=3},
+  {id:'pat50k',ico:'👑',txt:'Patrimônio de R$ 50 mil',cond:()=>patrimonio()>=50000},
+  {id:'pat200k',ico:'🏆',txt:'Patrimônio de R$ 200 mil — um império do café',cond:()=>patrimonio()>=200000},
+];
+function checarMetas(){
+  const novas=[];
+  METAS.forEach(m=>{ if(!S.metasVistas.includes(m.id)){ let ok=false; try{ok=m.cond()}catch(e){} if(ok){ S.metasVistas.push(m.id); novas.push(m); } } });
+  return novas;
+}
+
+/* estimativa de clientes p/ manhã */
+function estimativaClientes(){
+  const ativos=produtosAtivos(); let sp=0,spw=0;
+  ativos.forEach(p=>{sp+=p.pop;spw+=p.pop*fatorPreco(p)*multTend(p)});
+  const fp=sp>0?spw/sp:1;
+  const mid=CFG.baseCidade*fatorRep()*CLIMAS[S.climaHoje].dem*DIAS_SEMANA[S.diaSemana%7].dem*fatorMkt()*fp;
+  return {mid, lo:round(mid*0.8), hi:round(mid*1.22)};
+}
+
+/* ===================== SIMULAÇÃO ===================== */
+function simularDia(){
+  // pane no equipamento: EMERGE do desgaste por uso, não de sorteio fixo. Revise a tempo e ela nunca quebra.
+  let conserto=0, evento;
+  const desgaste=(S.maq?.uso||0)/CFG.maqLimite;      // 1.0 = passou da hora da revisão
+  const chancePane=clamp((desgaste-0.85)*0.7,0,0.6); // 0 abaixo de 85% de desgaste; sobe ao forçar além
+  if(S.dia>=3 && srandom()<chancePane){
+    conserto=90+S.upg.maquina*45;                    // conserto de emergência: bem mais caro que a revisão
+    evento={tipo:'ruim',ico:'🔧',tit:'A máquina quebrou!',desc:`Você forçou demais sem revisar. A cafeteira parou no meio da manhã — o conserto de emergência saiu ${brl(conserto)}.`,cap:0.55,_pane:true};
+  } else {
+    evento=sorteiaEvento();
+  }
+  const clima=CLIMAS[S.climaHoje];
+  const ativos=produtosAtivos();
+  // peso por produto = pop * preço * tendência * afinidade climática
+  let somaPesos=0, sp=0, spw=0;
+  ativos.forEach(p=>{
+    let af=1;
+    if(p.cat==='gelado'||p.cat==='refresco') af=clima.temp>0?1+clima.temp*0.25:0.6;
+    if(p.cat==='quente') af=clima.temp<0?1+(-clima.temp)*0.18:0.85;
+    p._fp=fatorPreco(p); p._peso=p.pop*p._fp*multTend(p)*af;
+    somaPesos+=p._peso; sp+=p.pop; spw+=p.pop*p._fp;
+  });
+  const fPrecoMedio=sp>0?spw/sp:1;
+  // demanda de avulsos — inclui o dia da semana e a "sorte do dia" (ruído)
+  const fDiaSemana=DIAS_SEMANA[S.diaSemana%7].dem;
+  let demanda=CFG.baseCidade*fatorRep()*clima.dem*fDiaSemana*fatorMkt()*fPrecoMedio*(evento.dem||1)*rnd(.88,1.12);
+  // delivery adiciona um canal
+  const fatDelivery=S.upg.delivery?1.18:1;
+  demanda*=fatDelivery;
+  // combos com bom desconto atraem um pouco mais de movimento (promoção) — cada combo ativo soma um empurrãozinho
+  (S.combos||[]).forEach(cb=>{ if(cb&&cb.ativo){const its=cb.itens.filter(id=>S.prod[id]&&S.prod[id].ativo);if(its.length>=2){const vc=its.reduce((a,id)=>a+S.prod[id].preco,0);demanda*=1+clamp(1-cb.preco/vc,0,0.7)*0.2;}} });
+  demanda=Math.max(0,demanda);
+  // assinantes por plano geram demanda garantida das bebidas do plano
+  const demAssinProd=demandaAssinantes();
+  let demAssinTotal=0; for(const k in demAssinProd) demAssinTotal+=demAssinProd[k];
+  // ...e ao virem buscar o café, boa parte leva um acompanhamento PAGO (a intenção do clube)
+  const varNorm=clamp((ativos.length-1)/6,0,1);
+  const taxaCasada=clamp(0.30+varNorm*0.35+(repGeral()/5)*0.15,0,0.85);
+  const extraDemanda=demAssinTotal*taxaCasada;
+  // pesos da compra casada: viés forte pra comida (o clássico "café + pão de queijo")
+  let somaPesosEx=0;
+  ativos.forEach(p=>{ p._pesoEx=p._peso*(p.cat==='comida'?3:p.cat==='refresco'?1.8:p.cat==='gelado'?1.3:0.5); somaPesosEx+=p._pesoEx; });
+
+  let cap=capacidadeHoje()*(evento.cap||1);
+  const demandaTotal=demanda+extraDemanda+demAssinTotal;
+  const atend=Math.min(demandaTotal,cap);
+  const perdidosFila=Math.max(0,demandaTotal-cap);
+  const fracAtend=demandaTotal>0?atend/demandaTotal:1;
+
+  let receita=0,receitaDeliv=0,custoIng=0,custoRevenda=0,perdaSobra=0,totalFaltou=0,totalVend=0,assinAtend=0,casadaVend=0,usoMaquina=0;
+  const porItem=[];
+
+  // ---- COMBOS DO DIA (até 2 promoções: DESVIAM parte dos avulsos; consomem estoque antes deles) ----
+  const prepDisp={}; ativos.forEach(p=>prepDisp[p._id]=dispHoje(p));
+  let combosVend=0,receitaCombo=0,fracCombo=0;
+  const combosRes=[];
+  (S.combos||[]).forEach(cb=>{
+    if(!cb||!cb.ativo)return;
+    const its=cb.itens.filter(id=>S.prod[id]&&S.prod[id].ativo);
+    if(its.length<2)return;
+    const valorCheio=its.reduce((a,id)=>a+S.prod[id].preco,0);
+    const desc=clamp(1-cb.preco/valorCheio,0,0.7);
+    let frac=clamp(0.12+desc*0.9,0,0.5);                             // fração dos avulsos que preferem este combo
+    frac=Math.min(frac,Math.max(0,0.6-fracCombo));                  // os combos juntos não desviam mais de 60% dos avulsos
+    fracCombo+=frac;
+    const demComboAtend=demanda*frac*fracAtend;
+    let lim=Math.floor(demComboAtend); its.forEach(id=>lim=Math.min(lim,Math.floor(prepDisp[id])));
+    const vend=Math.max(0,lim);
+    const faltou=Math.max(0,round(demComboAtend)-vend);             // quis o combo mas faltou item
+    its.forEach(id=>{ prepDisp[id]-=vend; const p=S.prod[id],c=vend*custoUnit(p); if(p.tipo==='revenda')custoRevenda+=c; else custoIng+=c; });
+    receita+=vend*cb.preco; totalVend+=vend*its.length; totalFaltou+=faltou;
+    its.forEach(id=>{if(S.prod[id].receita&&S.prod[id].receita.grao)usoMaquina+=vend;});
+    combosVend+=vend; receitaCombo+=vend*cb.preco;
+    combosRes.push({nomes:its.map(id=>S.prod[id].nome),vend,desc});
+  });
+  const demAvulsa=demanda*(1-fracCombo);                             // o resto compra itens soltos
+
+  ativos.forEach(p=>{
+    const avDem=somaPesos>0?demAvulsa*(p._peso/somaPesos):0;        // avulsos (fora os que foram pro combo)
+    const exDem=somaPesosEx>0?extraDemanda*(p._pesoEx/somaPesosEx):0; // acompanhamento do assinante (paga)
+    const asDem=demAssinProd[p._id]||0;                             // café do plano (não paga)
+    const demP=(avDem+exDem+asDem)*fracAtend;                       // atendidos (a fila corta uniformemente)
+    const querem=round(demP);
+    const vend=Math.min(querem,prepDisp[p._id]);                    // vende do estoque que sobrou após o combo
+    const faltou=Math.max(0,querem-vend);
+    const cu=custoUnit(p);
+    const fracAssin=demP>0?(asDem*fracAtend)/demP:0;               // fração que é café-do-plano (não paga)
+    const vendAssin=Math.round(vend*fracAssin);
+    const vendPagas=vend-vendAssin;                                // avulsos + acompanhamento pagam
+    assinAtend+=vendAssin;
+    const fracCasada=demP>0?(exDem*fracAtend)/demP:0;              // fração vinda do "casadinho"
+    casadaVend+=Math.round(vend*fracCasada);
+    const bruto=vendPagas*p.preco;
+    if(S.upg.delivery){ const dv=bruto*0.22; receitaDeliv+=dv*(1-CFG.taxaDelivery); receita+=bruto-dv; }
+    else receita+=bruto;
+    if(p.tipo==='revenda') custoRevenda+=vend*cu; else custoIng+=vend*cu;
+    const sobra=Math.max(0,prepDisp[p._id]-vend);
+    if(!naoPerece(p)) perdaSobra+=sobra*cu*(S.upg.geladeira?0.7:1);   // lacrado não vira perda — volta pro estoque no fechamento
+    totalFaltou+=faltou; totalVend+=vend;
+    if(p.receita&&p.receita.grao)usoMaquina+=vend;   // cafés que passam pela máquina desgastam o equipamento
+    porItem.push({id:p._id,nome:p.nome,emoji:p.emoji,vend,faltou,vendAssin,sobra:round(sobra),guarda:naoPerece(p)});
+  });
+  // ---- reputação (alvos por fator) ----
+  const filaP=demandaTotal>0?perdidosFila/demandaTotal:0;
+  const faltaP=atend>0?totalFaltou/atend:0;
+  const alvo={
+    custo: clamp(62+(fPrecoMedio-1)*110,5,100),
+    ambiente: clamp(52+S.upg.mesas*7+S.upg.wifi*12+S.upg.musica*10+S.upg.ar*12+S.upg.decor*9-filaP*45,5,100),
+    atendimento: clamp(56+S.upg.baristas*13+S.upg.treino*10-filaP*55-faltaP*28,5,100),
+    qualidade: clamp(38+S.upg.maquina*12+qualGrao()*30+S.upg.treino*6+S.upg.vitrine*8,5,100),
+    variedade: clamp(30+ativos.length*7+new Set(ativos.map(p=>p.cat)).size*9,5,100),
+  };
+  const rNovo={}; const dRep={};
+  for(const k in S.rep){ const alv=alvo[k]; let nv=S.rep[k]+(alv-S.rep[k])*0.28; if(S.upg.fidelidade) nv+=0.6; nv=clamp(nv,0,100); dRep[k]=nv-S.rep[k]; rNovo[k]=nv; }
+  if(evento.rep) for(const k in evento.rep){ if(rNovo[k]!=null){ const d=evento.rep[k]; rNovo[k]=clamp(rNovo[k]+d,0,100); dRep[k]=(dRep[k]||0)+d; } } // impacto direto do evento na reputação
+
+  // ---- gorjeta (opcional): cliente feliz deixa um extra ----
+  const satDia=clamp((S.rep.atendimento*0.45+S.rep.ambiente*0.30+S.rep.custo*0.25)/100 - filaP*0.5 - faltaP*0.35, 0, 1);
+  const gorjetaMedia=clamp((satDia-0.5)*1.6,0,0.9);            // R$ por cliente atendido, só quando bem satisfeito
+  const gorjeta=Math.round(atend*gorjetaMedia*100)/100;
+
+  // contagem: PESSOAS x ITENS (o combo entrega 2 itens mas é 1 venda/pessoa)
+  const itensVendidos=round(totalVend);
+  const vendasPagas=round(combosVend+porItem.reduce((a,i)=>a+(i.vend-i.vendAssin),0)); // combos + itens avulsos pagos
+  const ticketMedio=vendasPagas>0?(receita+receitaDeliv)/vendasPagas:0;
+  const semComprar=round(perdidosFila+totalFaltou); // desistiram da fila + não acharam o produto
+
+  // ---- CLUBE: os assinantes emergem dos clientes satisfeitos de HOJE (orgânico, com sorte) ----
+  const atendFrac=demAssinTotal>0?assinAtend/demAssinTotal:1;   // quanto do café dos assinantes foi servido (se faltou, <1)
+  const clube=atualizaClube({expostos:vendasPagas, satDia, faltaP, atendFrac});
+  const receitaClube=clube.receita;
+
+  // filiais rendem (ou custam, quando novas) conforme a força da marca de hoje
+  const filiais=simulaFiliais();
+
+  const salarios=S.upg.baristas*CFG.salarioBarista+(S.freelaHoje||0)*CFG.salarioFreela;
+  let fixo=CFG.fixoBase+S.upg.mesas*CFG.custoMesaDia+(S.custoFornecedor||0)+(S.contratoFornecedor?S.contratoFornecedor.custoDia:0)+(S.upg.ar?10:0);
+  const lucro=receita+receitaClube+receitaDeliv+gorjeta+filiais.lucro-custoIng-custoRevenda-perdaSobra-salarios-fixo-conserto;
+
+  return {evento,receita,receitaClube,clubeNovos:clube.novos,clubeNovosPlanos:clube.novosPorPlano,clubeRenov:clube.renovados,clubeCancel:clube.cancelados,receitaDeliv,gorjeta,conserto,custoIng,custoRevenda,perdaSobra,salarios,fixo,lucro,
+    filiaisLucro:filiais.lucro,filiaisBruto:filiais.bruto,filiaisCusto:filiais.custo,filiaisDet:filiais.det,
+    itensVendidos,vendasPagas,ticketMedio,semComprar,perdidosFila:round(perdidosFila),faltou:round(totalFaltou),
+    assinAtend:round(assinAtend),casadaVend:round(casadaVend),rNovo,dRep,porItem,demandaTotal:round(demandaTotal),cap:round(cap),
+    combosVend,receitaCombo,combosRes,
+    usoMaquina,desgaste,filaP,faltaP,fPrecoMedio,alvo};
+}
+function sorteiaEvento(){
+  const eleg=EVENTOS.filter(e=>{try{return !e.cond||e.cond(S)}catch(err){return false}});
+  const t=eleg.reduce((a,e)=>a+e.p,0);
+  let r=srandom()*t;
+  for(const e of eleg){if((r-=e.p)<=0)return e}
+  return eleg[0]||EVENTOS[0];
+}
+
+/* ===================== NAVEGAÇÃO ===================== */
+const TELAS=['tela-inicio','tela-manha','tela-dia','tela-fechamento','tela-carta','tela-gestao','tela-fim'];
+function mostra(id){TELAS.forEach(t=>$('#'+t).hidden=(t!==id));$('#hud').hidden=(id==='tela-inicio');$('#botnav').classList.toggle('show',id==='tela-gestao');window.scrollTo(0,0)}
+function atualizaHud(){
+  $('#hud-dia').textContent=S.dia;
+  const c=$('#hud-caixa');c.textContent=brl0(S.caixa);c.classList.toggle('neg',S.caixa<0);
+  $('#hud-rep').innerHTML='⭐ '+repGeral().toFixed(1).replace('.',',')+' <span style="font-size:10px;opacity:.55;vertical-align:1px">ⓘ</span>';
+}
+
+/* ===================== MANHÃ ===================== */
+function irManha(){
+  // clima já foi pré-sorteado no fechamento do dia anterior (mostrado na previsão da gestão)
+  S.freelaHoje=0;                    // cada dia começa sem reforço avulso
+  passoMercado();
+  atualizaHud();
+  const cl=CLIMAS[S.climaHoje], t=tendObj();
+  $('#manha-titulo').textContent='Dia '+S.dia;
+  $('#manha-chips').innerHTML=`<span class="chip">📅 ${DIAS_SEMANA[S.diaSemana%7].nome}</span><span class="chip">${cl.emoji} ${cl.nome}</span><span class="chip trend">${t.emoji} ${t.nome}</span>`+(S.boost?`<span class="chip trend">🚀 Em alta!</span>`:'');
+  atualizaCapacidade();
+  renderGrao(); renderItensManha(); manhaSec('cardapio');
+  mostra('tela-manha'); salvar();
+}
+function atualizaCapacidade(){ $('#manha-capacidade').textContent=capacidadeHoje()+'/dia'; }
+function renderGrao(){
+  const desbloq=GRAOS.filter(g=>S.ing[g].desbloq);
+  const box=$('#grao-sel');
+  if(desbloq.length<=1){box.hidden=true;return}
+  box.hidden=false;
+  $('#grao-opts').innerHTML=GRAOS.map(g=>{
+    const i=S.ing[g], on=S.graoAtivo===g, lock=!i.desbloq;
+    const est=Math.floor(i.estoque);
+    return `<div class="grao-opt ${on?'on':''} ${lock?'lock':''}" data-g="${g}">
+      <div class="gn">${i.nome.replace('Grão ','')}</div>
+      <div class="gp">${lock?'🔒':brl(precoIng(g))}</div>
+      <div class="gq">${lock?'—':'despensa '+est}</div></div>`;
+  }).join('');
+  $('#grao-hint').textContent='qualidade muda o sabor';
+  $('#grao-opts').querySelectorAll('.grao-opt').forEach(el=>el.addEventListener('click',()=>{
+    const g=el.dataset.g; if(!S.ing[g].desbloq)return; S.graoAtivo=g; renderGrao(); renderItensManha();
+  }));
+}
+function renderItensManha(){
+  const box=$('#manha-itens');box.innerHTML='';
+  const ativos=produtosAtivos();
+  const dAssin=demandaAssinantes();
+  if(Object.keys(dAssin).length){
+    const c=document.createElement('div');c.className='card';c.style.cssText='background:var(--surface2);border-color:var(--purple);font-size:12.5px;line-height:1.4';
+    c.innerHTML='🎟️ <b>Assinantes hoje</b> devem pedir '+Object.entries(dAssin).map(([b,q])=>`~${Math.ceil(q)} ${S.prod[b].emoji}`).join(' · ')+' — e muitos levam um acompanhamento pago. Tenha comida preparada!';
+    box.appendChild(c);
+  }
+  let catAtual=null;
+  ativos.sort((a,b)=>Object.keys(CATS).indexOf(a.cat)-Object.keys(CATS).indexOf(b.cat));
+  ativos.forEach(p=>{
+    if(p.cat!==catAtual){catAtual=p.cat;const h=document.createElement('div');h.className='cat-lbl';h.textContent=CATS[p.cat];box.appendChild(h)}
+    const cu=custoUnit(p), selo=seloPreco(p);
+    const np=naoPerece(p), est=p.estoque||0; if(np&&p.prep<est)p.prep=est;   // lacrado: nunca oferece menos do que já tem guardado
+    const card=document.createElement('div');card.className='card item-card';
+    card.innerHTML=`
+      <div class="item-head"><span class="emoji">${p.emoji}</span><span class="nome">${p.nome}</span>
+        ${((S.combos||[]).some(cb=>cb&&cb.ativo&&(cb.itens||[]).includes(p._id)))?'<span class="selo" style="background:rgba(232,169,75,.18);color:var(--gold)">🎁 combo</span>':''}
+        <span class="selo ${selo.cls}">${selo.txt}</span></div>
+      <div class="field"><div class="flabel"><span>Preço · custa ${brl(cu)}</span><b class="preco-val">${brl(p.preco)}</b></div>
+        <input type="range" class="sl-preco" min="${p.min}" max="${p.max}" step="0.5" value="${p.preco}"></div>
+      <div class="field"><div class="flabel"><span>${np?'Deixar disponível 🔁':'Preparar hoje'}</span><b class="prep-val">${p.prep} un</b></div>
+        <div class="prep-row"><div class="stepper"><button class="dec">−</button><span class="qtd">${p.prep}</span><button class="inc">+</button></div>
+        <span class="prep-cost">${np&&est>0?`${est} guardado · repõe <b class="pc">${brl(custoRepor(p))}</b>`:`= <b class="pc">${brl(custoRepor(p))}</b>`}</span></div>
+        ${np?'<div class="tiny dim" style="margin-top:3px;line-height:1.35">Lacrado — sobra não estraga, volta pro estoque. Você só paga a reposição.</div>':''}</div>`;
+    const sl=card.querySelector('.sl-preco');
+    const setFill=()=>sl.style.setProperty('--fill',((sl.value-p.min)/(p.max-p.min)*100)+'%');setFill();
+    sl.addEventListener('input',()=>{p.preco=parseFloat(sl.value);const s2=seloPreco(p);const se=card.querySelector('.selo');se.className='selo '+s2.cls;se.textContent=s2.txt;card.querySelector('.preco-val').textContent=brl(p.preco);setFill();atualizaEstimativa()});
+    const q=card.querySelector('.qtd');
+    const upd=()=>{q.textContent=p.prep;card.querySelector('.prep-val').textContent=p.prep+' un';card.querySelector('.pc').textContent=brl(custoRepor(p));atualizaCusto()};
+    card.querySelector('.dec').addEventListener('click',()=>{p.prep=Math.max(np?est:0,p.prep-5);upd()});
+    card.querySelector('.inc').addEventListener('click',()=>{p.prep+=5;upd()});
+    box.appendChild(card);
+  });
+  renderAjustesManha();
+  atualizaCusto();atualizaEstimativa();atualizaCapacidade();
+}
+function manhaSec(name){
+  const c=$('#manha-cardapio'), a=$('#manha-ajustes'); if(!c||!a)return;
+  c.hidden=name!=='cardapio'; a.hidden=name!=='ajustes';
+  document.querySelectorAll('#manha-seg button').forEach(b=>b.classList.toggle('on',b.dataset.sec===name));
+}
+function renderAjustesManha(){
+  const box=$('#manha-ajustes'); if(!box)return; box.innerHTML='';
+  renderFreelaCard(box); renderComboCard(box); renderMaquinaCard(box);
+  // ponto vermelho no menuzinho quando a máquina pede revisão (senão o jogador não olha)
+  const desg=(S.maq?.uso||0)/CFG.maqLimite;
+  const ajBtn=document.querySelector('#manha-seg button[data-sec="ajustes"]');
+  if(ajBtn) ajBtn.innerHTML=`🎛️ Ajustes do dia${desg>=0.7?' <span style="color:var(--bad);font-size:15px;line-height:0">•</span>':''}`;
+}
+function renderFreelaCard(box){
+  const f=S.freelaHoje||0, capHoje=capacidadeHoje();
+  const est=estimativaClientes(), apertado=est.hi>capHoje;
+  const ativos=produtosAtivos();
+  const margem=ativos.length?ativos.reduce((a,p)=>a+(p.preco-custoUnit(p)),0)/ativos.length:4;
+  const ptEq=Math.max(1,Math.ceil(CFG.salarioFreela/Math.max(0.5,margem)));
+  const card=document.createElement('div');card.className='card';
+  if(apertado||f>0) card.style.borderColor='var(--gold-soft)';
+  card.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+      <div style="font-size:20px">🧑‍🍳</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;font-size:14px">Reforço de hoje${f>0?` · ${f} freela${f>1?'s':''}`:''}</div>
+        <div class="tiny muted">atende até <b style="color:${apertado?'var(--bad)':'var(--good)'}">${capHoje}/dia</b>${apertado?' — o movimento previsto pode passar disso!':''}</div>
+      </div>
+      <div class="stepper" style="flex:none"><button class="dec-f">−</button><span class="qtd" style="min-width:30px">${f}</span><button class="inc-f">+</button></div>
+    </div>
+    <div class="tiny muted" style="margin-top:8px;line-height:1.4">Cada freela: <b>+${CFG.capBarista}</b> clientes por <b>R$${CFG.salarioFreela}</b> (avulso). Só compensa se recuperar <b style="color:var(--crema)">~${ptEq}</b> clientes que iriam embora na fila.</div>`;
+  card.querySelector('.dec-f').addEventListener('click',()=>{S.freelaHoje=Math.max(0,(S.freelaHoje||0)-1);renderItensManha()});
+  card.querySelector('.inc-f').addEventListener('click',()=>{S.freelaHoje=(S.freelaHoje||0)+1;renderItensManha()});
+  box.appendChild(card);
+}
+function custoManutencao(){return 40+S.upg.maquina*15}
+function renderMaquinaCard(box){
+  const uso=S.maq?.uso||0, desg=uso/CFG.maqLimite, pct=Math.min(100,round(desg*100));
+  let cor,status;
+  if(desg<0.7){cor='var(--good)';status='em dia';}
+  else if(desg<1){cor='var(--gold)';status='pedindo revisão';}
+  else {cor='var(--bad)';status='atrasada — risco de quebrar!';}
+  const custo=custoManutencao();
+  const card=document.createElement('div');card.className='card';
+  card.innerHTML=`<div style="display:flex;align-items:center;gap:9px">
+      <div style="font-size:20px">🔧</div>
+      <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13.5px">Equipamento · <span style="color:${cor}">${status}</span></div>
+        <div class="rep-track" style="margin-top:5px"><div class="fill" style="width:${pct}%;background:${cor}"></div></div></div>
+      <div class="tiny muted" style="white-space:nowrap">${pct}%</div></div>
+    ${desg>=0.7?`<button class="cta ghost" id="maq-revisar" style="padding:11px;margin-top:10px">Fazer revisão · ${brl(custo)}</button>`:''}`;
+  const b=card.querySelector('#maq-revisar');
+  if(b)b.addEventListener('click',()=>{ if(custo>S.caixa){flutua('Caixa insuficiente');return;} S.caixa-=custo; S.maq.uso=0; salvar(); atualizaHud(); renderItensManha(); flutua('Máquina revisada 🔧✨'); });
+  box.appendChild(card);
+}
+function comboLigado(idx){const cb=(S.combos||[])[idx];return !!(cb&&cb.ativo&&(cb.itens||[]).filter(id=>S.prod[id]&&S.prod[id].ativo).length>=2);}
+const CLIMA_ICO={quente:'☀️',frio:'❄️',qualquer:'🌤️'};
+function climaTempHoje(){return CLIMAS[S.climaHoje]?CLIMAS[S.climaHoje].temp:0;}
+function presetCombina(pr){const t=climaTempHoje();return pr.clima==='qualquer'||(pr.clima==='quente'&&t>0)||(pr.clima==='frio'&&t<0);}
+function presetValido(pr){return (pr.itens||[]).filter(id=>S.prod[id]&&S.prod[id].ativo).length>=2;}
+function aplicarPreset(idx,pr){
+  const its=(pr.itens||[]).filter(id=>S.prod[id]&&S.prod[id].ativo);
+  if(its.length<2){flutua('Faltam itens desse atalho no cardápio');return;}
+  if(!Array.isArray(S.combos))S.combos=[]; S.combos[idx]={ativo:true,itens:[...its],preco:pr.preco};
+  salvar(); renderItensManha(); flutua(`Atalho aplicado no Combo ${idx+1} 🎁`);
+}
+function renderComboCard(box){
+  const podeCombo=produtosAtivos().length>=2;
+  // o 2º combo só aparece quando o 1º já está rodando (ou já foi montado) — não incha a tela à toa
+  const slots=(comboLigado(0)||((S.combos||[])[1]&&S.combos[1].ativo))?[0,1]:[0];
+  slots.forEach(idx=>{
+    const cb=(S.combos||[])[idx]||{};
+    const its=(cb.itens||[]).filter(id=>S.prod[id]&&S.prod[id].ativo);
+    const ligado=cb.ativo&&its.length>=2;
+    const card=document.createElement('div');card.className='card';card.style.borderColor='var(--gold-soft)';
+    if(ligado){
+      const cheio=its.reduce((a,id)=>a+S.prod[id].preco,0), desc=Math.round(clamp(1-cb.preco/cheio,0,0.9)*100);
+      card.innerHTML=`<div style="display:flex;align-items:center;gap:9px">
+        <div style="font-size:22px">🎁</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14.5px">Combo ${idx+1}</div>
+          <div class="tiny muted">${its.map(id=>S.prod[id].emoji+' '+S.prod[id].nome).join(' + ')}</div>
+          <div class="tiny" style="color:var(--gold);font-weight:700">${brl(cb.preco)} · ${desc}% off (era ${brl(cheio)})</div></div>
+        <button class="buy" data-combo="${idx}" style="background:var(--surface3);color:var(--gold);border:1px solid var(--gold-soft)">Trocar</button></div>`;
+    } else {
+      const dica=idx===1?'Um 2º combo pra outro público — outro par de itens.':'Junte 2 itens com desconto — atrai mais gente e sobe o ticket.';
+      // atalhos salvos que dá pra aplicar direto nesse slot (o que combina com o clima de hoje ganha 💡)
+      const presets=(S.combosSalvos||[]).filter(presetValido);
+      const chips=presets.length?`<div class="grao-opts" style="flex-wrap:wrap;gap:6px;margin-top:9px">${presets.map((pr,i)=>{const comb=presetCombina(pr);const emos=pr.itens.filter(id=>S.prod[id]).map(id=>S.prod[id].emoji).join('');return `<div class="grao-opt ${comb?'on':''}" data-preset="${i}" data-slot="${idx}" style="flex:1 0 30%;min-width:0;padding:7px 5px"><div class="gn" style="font-size:15px">${CLIMA_ICO[pr.clima]||'🌤️'} ${emos}</div><div class="gq">${comb?'💡 hoje · ':''}${brl(pr.preco)}</div></div>`;}).join('')}</div>`:'';
+      card.innerHTML=`<div style="display:flex;align-items:center;gap:9px">
+        <div style="font-size:22px">🎁</div>
+        <div style="flex:1"><div style="font-weight:800;font-size:14.5px">Combo ${idx+1}</div>
+          <div class="tiny muted">${podeCombo?(presets.length?'Toque um atalho salvo, ou monte um novo.':dica):'Tenha 2+ itens no cardápio pra montar.'}</div></div>
+        ${podeCombo?`<button class="buy" data-combo="${idx}">Montar</button>`:''}</div>${chips}`;
+      card.querySelectorAll('[data-preset]').forEach(el=>el.addEventListener('click',()=>aplicarPreset(+el.dataset.slot,presets[+el.dataset.preset])));
+    }
+    const b=card.querySelector('[data-combo]'); if(b)b.addEventListener('click',()=>editarCombo(idx));
+    box.appendChild(card);
+  });
+}
+function editarCombo(idx){
+  idx=idx||0;
+  const ativos=produtosAtivos();
+  if(ativos.length<2){flutua('Precisa de 2+ itens no cardápio');return;}
+  if(!Array.isArray(S.combos))S.combos=[]; if(!Array.isArray(S.combosSalvos))S.combosSalvos=[];
+  const cb=S.combos[idx]||{ativo:false,itens:[],preco:0};
+  const sel=new Set((cb.itens||[]).filter(id=>S.prod[id]&&S.prod[id].ativo));
+  if(sel.size<2){ sel.clear(); ativos.slice(0,2).forEach(p=>sel.add(p._id)); }
+  let preco=cb.preco||0, salvando=false;
+  const ov=document.createElement('div');ov.className='overlay';
+  const sheet=document.createElement('div');sheet.className='sheet';sheet.style.maxHeight='88vh';sheet.style.overflowY='auto';
+  ov.appendChild(sheet);document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()});
+  function render(){
+    const its=[...sel], cheio=its.reduce((a,id)=>a+S.prod[id].preco,0);
+    const minP=Math.max(1,Math.round(cheio*0.4)), maxP=Math.max(minP+1,Math.round(cheio));
+    if(!preco||preco>maxP||preco<minP) preco=Math.round(cheio*0.8*2)/2;
+    const desc=cheio>0?Math.round((1-preco/cheio)*100):0;
+    const presets=S.combosSalvos||[];
+    sheet.innerHTML=`<h3>🎁 Combo ${idx+1}</h3>
+      ${presets.length?`<div class="tiny muted" style="margin-bottom:-4px">Atalhos salvos — toque pra carregar:</div>
+      <div class="grao-opts" style="flex-wrap:wrap;gap:6px">${presets.map((pr,i)=>{const emos=(pr.itens||[]).filter(id=>S.prod[id]).map(id=>S.prod[id].emoji).join('');return `<div class="grao-opt" data-load="${i}" style="flex:1 0 30%;min-width:0;padding:7px 5px;position:relative"><div class="gn" style="font-size:15px">${CLIMA_ICO[pr.clima]||'🌤️'} ${emos}</div><div class="gq">${brl(pr.preco)}</div><span data-del="${i}" style="position:absolute;top:-7px;right:-5px;background:var(--surface3);border:1px solid var(--line2);border-radius:50%;width:19px;height:19px;line-height:17px;text-align:center;font-size:12px;color:var(--bad)">×</span></div>`;}).join('')}</div>`:''}
+      <div class="tiny muted">Escolha 2 ou 3 itens que combinam.</div>
+      <div class="grao-opts" id="cb-itens" style="flex-wrap:wrap;gap:6px"></div>
+      <div class="field"><div class="flabel"><span>Preço do combo</span><b>${brl(preco)}</b></div>
+        <input type="range" id="cb-preco" min="${minP}" max="${maxP}" step="0.5" value="${preco}"></div>
+      <div class="tiny" style="color:${desc>0?'var(--good)':'var(--ink-dim)'};font-weight:700">Separado custaria ${brl(cheio)}${desc>0?` · ${desc}% de desconto — atrai clientes`:' · sem desconto'}</div>
+      ${salvando?`<div class="tiny muted" style="margin-bottom:-4px">Salvar atalho pra qual clima?</div><div class="row-btns"><button class="cta ghost" data-sv="quente">☀️ Calor</button><button class="cta ghost" data-sv="frio">❄️ Frio</button><button class="cta ghost" data-sv="qualquer">🌤️ Sempre</button></div>`:`<button class="cta ghost" id="cb-salvar" style="color:var(--gold);border-color:var(--gold-soft)">⭐ Salvar como atalho</button>`}
+      <div class="row-btns"><button class="cta ghost" id="cb-cancel">Cancelar</button><button class="cta" id="cb-save">Ativar combo</button></div>
+      ${cb.ativo?'<button class="cta ghost" id="cb-off" style="color:var(--bad);border-color:var(--bad-soft)">Desligar combo</button>':''}`;
+    const cbox=sheet.querySelector('#cb-itens');
+    cbox.innerHTML=ativos.map(p=>`<div class="grao-opt ${sel.has(p._id)?'on':''}" data-i="${p._id}" style="flex:1 0 30%;min-width:0"><div class="gn" style="font-size:16px">${p.emoji}</div><div class="gq">${p.nome}</div></div>`).join('');
+    cbox.querySelectorAll('.grao-opt').forEach(el=>el.addEventListener('click',()=>{const id=el.dataset.i;if(sel.has(id)){if(sel.size>2)sel.delete(id)}else{if(sel.size<3)sel.add(id)}preco=0;render()}));
+    sheet.querySelectorAll('[data-load]').forEach(el=>el.addEventListener('click',e=>{ if(e.target.dataset.del!=null)return; const pr=presets[+el.dataset.load]; const val=(pr.itens||[]).filter(id=>S.prod[id]&&S.prod[id].ativo); if(val.length<2){flutua('Faltam itens desse atalho no cardápio');return;} sel.clear(); val.forEach(id=>sel.add(id)); preco=pr.preco; salvando=false; render(); }));
+    sheet.querySelectorAll('[data-del]').forEach(el=>el.addEventListener('click',e=>{ e.stopPropagation(); S.combosSalvos.splice(+el.dataset.del,1); salvar(); render(); }));
+    const sl=sheet.querySelector('#cb-preco');sl.style.setProperty('--fill',((sl.value-minP)/(maxP-minP)*100)+'%');
+    sl.addEventListener('input',()=>{preco=parseFloat(sl.value);render()});
+    if(salvando){ sheet.querySelectorAll('[data-sv]').forEach(el=>el.addEventListener('click',()=>{ if(sel.size<2){flutua('Escolha 2 itens');return;} S.combosSalvos.push({itens:[...sel],preco,clima:el.dataset.sv}); if(S.combosSalvos.length>6)S.combosSalvos.shift(); salvar(); salvando=false; flutua('Atalho salvo ⭐'); render(); })); }
+    else { const sv=sheet.querySelector('#cb-salvar'); if(sv)sv.addEventListener('click',()=>{ if(sel.size<2){flutua('Escolha 2 itens primeiro');return;} salvando=true; render(); }); }
+    sheet.querySelector('#cb-cancel').addEventListener('click',()=>ov.remove());
+    sheet.querySelector('#cb-save').addEventListener('click',()=>{S.combos[idx]={ativo:true,itens:[...sel],preco};salvar();ov.remove();renderItensManha();flutua(`Combo ${idx+1} ativado 🎁`)});
+    if(cb.ativo){const off=sheet.querySelector('#cb-off');if(off)off.addEventListener('click',()=>{S.combos[idx].ativo=false;salvar();ov.remove();renderItensManha();flutua(`Combo ${idx+1} desligado`)})}
+  }
+  render();
+}
+function custoPreparoTotal(){ // só o que vai ser comprado (ingrediente que falta na despensa + revenda)
+  let total=0; const consumo={};
+  produtosAtivos().forEach(p=>{
+    if(p.tipo==='revenda'){ total+=custoRepor(p); return; }
+    for(const ing in p.receita){ const real=ing==='grao'?S.graoAtivo:ing; consumo[real]=(consumo[real]||0)+p.receita[ing]*p.prep; }
+  });
+  for(const ing in consumo){ const falta=Math.max(0,consumo[ing]-S.ing[ing].estoque); total+=falta*precoIng(ing); }
+  return total;
+}
+function atualizaCusto(){
+  const c=custoPreparoTotal();const el=$('#manha-custo');el.textContent=brl(c);
+  el.style.color=c>S.caixa?'var(--bad)':'var(--crema)';
+  $('#btn-abrir').disabled=c>S.caixa;
+  $('#btn-abrir').textContent=c>S.caixa?'Caixa insuficiente':'Abrir as portas 🔓';
+}
+function estimativaClube(){const d=demandaAssinantes();let s=0;for(const k in d)s+=d[k];return round(s)}   // quantos assinantes devem passar
+function estimativaCombos(demAvulsaMid){                                                                     // quantos combos devem sair (mesma lógica de fracCombo do simularDia)
+  let frac=0;
+  (S.combos||[]).forEach(cb=>{ if(!cb||!cb.ativo)return; const its=cb.itens.filter(id=>S.prod[id]&&S.prod[id].ativo); if(its.length<2)return;
+    const cheio=its.reduce((a,id)=>a+S.prod[id].preco,0); const desc=clamp(1-cb.preco/cheio,0,0.7); let f=clamp(0.12+desc*0.9,0,0.5); f=Math.min(f,Math.max(0,0.6-frac)); frac+=f; });
+  return round(demAvulsaMid*frac);
+}
+function atualizaEstimativa(){
+  const e=estimativaClientes(), cl=estimativaClube();
+  $('#manha-esperado').textContent=`~${e.lo+cl}–${e.hi+cl}`;                       // total = rua + clube (é o que aparece no dia)
+  const det=$('#manha-esperado-det'); if(!det)return;
+  let txt=`🚶 ~${e.lo}–${e.hi} de rua`+(cl>0?` &nbsp;+&nbsp; 🎟️ ~${cl} do clube`:'');
+  const cb=estimativaCombos(e.mid); if(cb>0) txt+=` &nbsp;·&nbsp; 🎁 ~${cb} em combo`;
+  det.innerHTML=txt;
+}
+
+/* ===================== EXPEDIENTE ===================== */
+function abrir(){
+  const custo=custoPreparoTotal(); if(custo>S.caixa)return;
+  // consome despensa e paga o que falta
+  const consumo={};
+  produtosAtivos().forEach(p=>{ if(p.tipo!=='revenda') for(const ing in p.receita){const real=ing==='grao'?S.graoAtivo:ing;consumo[real]=(consumo[real]||0)+p.receita[ing]*p.prep;} });
+  for(const ing in consumo){ const usaEstoque=Math.min(consumo[ing],S.ing[ing].estoque); S.ing[ing].estoque-=usaEstoque; const falta=consumo[ing]-usaEstoque; S.caixa-=falta*precoIng(ing); }
+  produtosAtivos().forEach(p=>{ if(p.tipo==='revenda') S.caixa-=custoRepor(p); }); // revenda comprada (lacrado: só a reposição acima do estoque)
+  atualizaHud();
+  simResultado=simularDia();
+  mostra('tela-dia'); animaExpediente();
+}
+function animaExpediente(){
+  const r=simResultado;
+  if(PREFS.velExp==='pular'){ irFechamento(); return; }   // configuração: pula direto pro fechamento
+  const elC=$('#dia-clientes'),elR=$('#dia-receita'),elBar=$('#dia-barra'),elRel=$('#dia-relogio'),elT=$('#dia-toasts'),elE=$('#dia-entraram');
+  elT.innerHTML='';elC.textContent='0';elR.textContent=brl(0);elBar.style.width='0%';elE.textContent='de 0 que entraram hoje';
+  const reduz=window.matchMedia('(prefers-reduced-motion:reduce)').matches||PREFS.menosMov;
+  const DUR=reduz?300:(PREFS.velExp==='rapida'?1900:4200), t0=performance.now(), alvoC=r.vendasPagas, alvoE=r.demandaTotal, alvoR=r.receita+r.receitaClube+r.receitaDeliv+r.gorjeta;
+  const toasts=[{t:0.06,cls:'event',txt:`${r.evento.ico} ${pickTxt(r.evento.tit)}`}];
+  if(r.assinAtend>0) toasts.push({t:0.3,cls:'good',txt:`🎟️ ${r.assinAtend} assinantes passaram`});
+  if(r.casadaVend>0) toasts.push({t:0.44,cls:'good',txt:`🛍️ Levaram ${r.casadaVend} acompanhamentos`});
+  if(r.combosVend>0) toasts.push({t:0.58,cls:'good',txt:`🎁 ${r.combosVend} combos do dia vendidos`});
+  if(r.gorjeta>=6) toasts.push({t:0.84,cls:'good',txt:`💛 Gorjetas: ${brl(r.gorjeta)}`});
+  if(r.perdidosFila>3) toasts.push({t:0.52,cls:'bad',txt:`😖 Fila grande — ${r.perdidosFila} desistiram`});
+  if(r.faltou>2) toasts.push({t:0.72,cls:'bad',txt:`📦 Faltou produto pra ${r.faltou} pessoas`});
+  if(r.perdidosFila<=3&&r.faltou<=2) toasts.push({t:0.62,cls:'good',txt:'👍 Atendimento redondo hoje'});
+  let ti=0; clearInterval(animTimer);
+  animTimer=setInterval(()=>{
+    const p=clamp((performance.now()-t0)/DUR,0,1), e=1-Math.pow(1-p,2);
+    elC.textContent=round(alvoC*e); elR.textContent=brl(alvoR*e); elBar.style.width=(p*100)+'%';
+    elE.textContent='de '+round(alvoE*e)+' que entraram hoje';
+    elRel.textContent=String(7+round(p*11)).padStart(2,'0')+':00';
+    while(ti<toasts.length&&p>=toasts[ti].t){const tt=toasts[ti];const d=document.createElement('div');d.className='toast '+tt.cls;d.textContent=tt.txt;elT.appendChild(d);ti++}
+    if(p>=1){clearInterval(animTimer);elRel.textContent='18:00';setTimeout(irFechamento,reduz?100:600)}
+  },1000/30);
+}
+
+/* ===================== FECHAMENTO ===================== */
+function irFechamento(){
+  const r=simResultado;
+  S.caixa+=r.receita+r.receitaClube+r.receitaDeliv+r.gorjeta+r.filiaisLucro-r.perdaSobra-r.salarios-r.fixo-r.conserto;
+  // parcela do empréstimo (se pegou fôlego com o banco)
+  let parcela=0;
+  if(S.emprestimo&&S.emprestimo.saldo>0){ parcela=Math.min(S.emprestimo.parcela,S.emprestimo.saldo); S.caixa-=parcela; S.emprestimo.saldo-=parcela; if(S.emprestimo.saldo<=0.5){S.emprestimo=null;setTimeout(()=>flutua('🏦 Empréstimo quitado!'),700);} }
+  r._parcela=parcela;
+  r.porItem.forEach(i=>{ if(i.guarda&&S.prod[i.id]) S.prod[i.id].estoque=i.sobra; });   // lacrados: a sobra vira estoque pro dia seguinte
+  S.rep=r.rNovo;
+  // desgaste da máquina: acumula com o uso; a pane (conserto de emergência) renova o equipamento
+  if(r.evento&&r.evento._pane) S.maq.uso=0; else S.maq.uso=(S.maq.uso||0)+r.usoMaquina;
+  S.diag={filaP:r.filaP,faltaP:r.faltaP,fPrecoMedio:r.fPrecoMedio,alvo:r.alvo,perdidosFila:r.perdidosFila,faltou:r.faltou};
+  if(S.caixa<0)S.diasVermelho++;else S.diasVermelho=0;
+  if(r.lucro>S.melhorDia)S.melhorDia=r.lucro;
+  const pat=patrimonio(); if(pat>S.patrimonioPico)S.patrimonioPico=pat;
+  const metasNovas=checarMetas();
+  atualizaHud();
+
+  $('#fech-titulo').textContent='Dia '+S.dia+' fechado';
+  const lv=$('#fech-lucro');lv.textContent=brl(r.lucro);lv.className='val '+(r.lucro>=0?'pos':'neg');
+  $('#fech-lucro-sub').textContent=r.lucro>=0?'No azul! Guardado no caixa.':'No vermelho hoje.';
+
+  $('#fech-star').innerHTML='⭐ <span class="st">'+repGeral().toFixed(1).replace('.',',')+'</span>';
+  renderRepBars($('#fech-rep-bars'),r.dRep);
+
+  // marcos conquistados hoje — a sensação de evoluir
+  const mbox=$('#fech-metas'); mbox.innerHTML='';
+  metasNovas.forEach(m=>{
+    const d=document.createElement('div');d.className='card raised';d.style.cssText='border-color:var(--gold-soft);display:flex;align-items:center;gap:11px;background:linear-gradient(180deg,var(--surface2),var(--surface))';
+    d.innerHTML=`<div style="font-size:26px">${m.ico}</div><div style="flex:1;min-width:0"><div class="eyebrow" style="color:var(--gold)">Conquista</div><div style="font-weight:800;font-size:13.5px;line-height:1.3">${m.txt}</div></div>`;
+    mbox.appendChild(d);
+  });
+
+  const L=$('#fech-linhas');L.innerHTML='';
+  const add=(k,v,cls='',sub=false)=>{const d=document.createElement('div');d.className='linha'+(sub?' sub':'');d.innerHTML=`<span class="k">${k}</span><span class="v ${cls}">${v}</span>`;L.appendChild(d)};
+  add('Vendas no balcão',brl(r.receita),'pos');
+  (r.combosRes||[]).filter(c=>c.vend>0).forEach((c,i)=>add(`🎁 Combo ${i+1} (${c.nomes.join(' + ')})`,`${c.vend} vend.`,'',true));
+  if(r.receitaDeliv>0)add('Delivery (menos taxa)',brl(r.receitaDeliv),'pos');
+  if((S.filiais||[]).length){
+    add(`🏪 Rede · ${S.filiais.length} ${S.filiais.length>1?'filiais':'filial'}`,brl(r.filiaisLucro),r.filiaisLucro>=0?'pos':'neg');
+    r.filiaisDet.forEach(f=>add(`&nbsp;&nbsp;${f.emoji} ${f.nome}${f.novata?' · engatando':''}`,brl(f.lucro),f.lucro>=0?'pos':'neg',true));
+  }
+  if(r.receitaClube>0||totalAssinantes()>0){
+    const tt=totalAssinantes();
+    add(`🎟️ Clube · ${tt} assinante${tt!=1?'s':''}`,brl(r.receitaClube),'pos');
+    if(r.clubeNovos>0){
+      const np=r.clubeNovosPlanos||[];
+      if(np.length<=1)add(`&nbsp;&nbsp;🎉 ${r.clubeNovos} assinou hoje${np[0]?' · '+np[0].nome:''} (pagou a mensalidade)`,'','pos',true);
+      else{ add(`&nbsp;&nbsp;🎉 ${r.clubeNovos} assinaram hoje (pagaram a mensalidade)`,'','pos',true); np.forEach(p=>add(`&nbsp;&nbsp;&nbsp;&nbsp;• ${p.qtd}× ${p.nome}`,'','pos',true)); }
+    }
+    if(r.clubeRenov>0)add(`&nbsp;&nbsp;🔄 ${r.clubeRenov} renovaram hoje`,'','pos',true);
+    if(r.clubeCancel>0)add(`&nbsp;&nbsp;😞 ${r.clubeCancel} cancelaram`,'','neg',true);
+  }
+  if(r.gorjeta>0)add('Gorjetas 💛',brl(r.gorjeta),'pos');
+  r.porItem.filter(i=>i.vend>0||i.sobra>0||i.faltou>0).forEach(i=>add(`${i.emoji} ${i.nome}`,`${i.vend} vend.`+(i.vendAssin>0?` (${i.vendAssin} clube)`:'')+(i.sobra>0?(i.guarda?` · sobrou ${i.sobra} 🔁 guardado`:` · sobrou ${i.sobra}`):'')+(i.faltou>0?` · faltou ${i.faltou}`:''),'',true));
+  if(r.custoIng>0)add('Insumos usados','– '+brl(r.custoIng),'neg');
+  if(r.custoRevenda>0)add('Compra de revenda','– '+brl(r.custoRevenda),'neg');
+  if(r.perdaSobra>0)add('Perda (sobra)','– '+brl(r.perdaSobra),'neg');
+  if(r.salarios>0)add('Salários','– '+brl(r.salarios),'neg');
+  add('Custo fixo','– '+brl(r.fixo),'neg');
+  if(r.conserto>0)add('🔧 Conserto do equipamento','– '+brl(r.conserto),'neg');
+  if(r._parcela>0)add('🏦 Parcela do empréstimo','– '+brl(r._parcela),'neg');
+  add('💳 Ticket médio (por venda paga)',brl(r.ticketMedio));
+  add('📦 Itens entregues',r.itensVendidos+'','',true);
+  if(r.casadaVend>0)add('🛍️ Assinantes levaram junto',r.casadaVend+' itens','pos',true);
+
+  // ---- FUNIL DO DIA: conta a história de quantos vieram e onde a gente se perdeu (sempre visível) ----
+  const fila=$('#fech-fila'); fila.hidden=false; fila.style.borderColor='var(--line2)';
+  const apareceram=r.demandaTotal, fil=r.perdidosFila, flt=r.faltou;
+  const chegaram=Math.max(0,apareceram-fil), levaram=Math.max(0,chegaram-flt);
+  const step=(emo,lbl,num,cor)=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 0"><span style="font-size:18px">${emo}</span><span style="flex:1;font-weight:800;font-size:13.5px">${lbl}</span><span style="font-weight:900;font-size:19px;color:${cor};font-family:var(--font-disp)">${num}</span></div>`;
+  const leak=(emo,num,txt,motivo)=>`<div style="padding:1px 0 4px 30px"><div style="display:flex;align-items:baseline;gap:6px;color:var(--bad)"><span style="font-size:12px">↘</span><span style="font-size:12.5px;font-weight:800">${emo} ${num} ${txt}</span></div><div style="font-size:11px;color:var(--ink-dim);padding-left:19px;line-height:1.35">${motivo}</div></div>`;
+  let corpo=step('👥','Apareceram na porta',apareceram,'var(--ink)');
+  if(fil>0) corpo+=leak('🚶',fil,'desistiram da fila',`sua capacidade era ~${r.cap}/dia — barista/mesas/freela deixam entrar mais`);
+  corpo+=step('🚪','Chegaram ao balcão',chegaram,'var(--gold)');
+  if(flt>0) corpo+=leak('😕',flt,'não acharam o produto','o que queriam esgotou — precisava ter preparado mais');
+  corpo+=step('✅','Levaram algo pra casa',levaram,'var(--good)');
+  let dica;
+  if(fil<=2&&flt<=2) dica='👍 Dia redondo — quase todo mundo foi atendido.';
+  else if(fil>flt) dica='💡 Hoje o gargalo foi a FILA (capacidade): mais barista, mesas ou um freela deixam mais gente entrar.';
+  else if(flt>fil) dica='💡 Hoje o gargalo foi o ESTOQUE: prepare mais dos itens que esgotaram (veja os "faltou" acima).';
+  else dica='💡 Perdeu gente na fila E por falta de produto — reforce capacidade E preparo.';
+  fila.innerHTML=`<div style="font-family:var(--font-disp);font-weight:600;font-size:16px">Movimento do dia</div>
+    <div style="margin:9px 0 4px">${corpo}</div>
+    <div style="font-size:12.5px;color:var(--gold);font-weight:700;line-height:1.4;border-top:1px solid var(--line);padding-top:10px">${dica}</div>
+    <div style="font-size:11.5px;color:var(--ink-dim);margin-top:7px;line-height:1.4">Dos ${levaram} que levaram algo: <b>${r.vendasPagas} vendas pagas</b>${r.assinAtend>0?` + <b>${r.assinAtend} cafés do clube</b> (já pagos)`:''}. Lembre: 1 combo = 1 venda, 2 itens.</div>`;
+
+  const ev=r.evento;
+  if(ev.tipo!=='neutro'){$('#fech-evento').hidden=false;$('#fech-evento-ico').textContent=ev.ico;$('#fech-evento-tit').textContent=pickTxt(ev.tit);$('#fech-evento-desc').textContent=pickTxt(ev.desc)}
+  else $('#fech-evento').hidden=true;
+
+  S.climaHoje=pick(Object.keys(CLIMAS));   // sorteia o clima de amanhã, já visível na previsão da gestão
+  fechSec('balanco');   // abre no Balanço; Movimento e Notas ficam a um toque
+  salvar(); mostra('tela-fechamento');
+}
+function fechSec(name){
+  ['balanco','movimento','rep'].forEach(s=>{const el=$('#fech-sec-'+s);if(el)el.hidden=(s!==name);});
+  document.querySelectorAll('#fech-seg button').forEach(b=>b.classList.toggle('on',b.dataset.sec===name));
+}
+function renderRepBars(box,dRep){
+  const meta=[['custo','💰 Custo-benefício'],['ambiente','✨ Ambiente'],['atendimento','🧑‍🍳 Atendimento'],['qualidade','☕ Qualidade'],['variedade','🍽️ Variedade']];
+  box.innerHTML=meta.map(([k,nm])=>{
+    const v=round(S.rep[k]); const d=dRep?dRep[k]:0;
+    const ds=Math.abs(d)>=0.5?`<span class="delta ${d>0?'up':'down'}">${d>0?'▲':'▼'}${Math.abs(round(d))}</span>`:'';
+    return `<div class="rep-row"><span class="rk">${nm}</span><span class="rep-track"><span class="fill" style="width:${v}%"></span></span><span class="rv">${v}${ds}</span></div>`;
+  }).join('');
+}
+
+/* ===================== PÓS-DIA: carta ou gestão ===================== */
+function posDia(){
+  if(S.diasVermelho>=CFG.diasVermelhoMax){ if(!S.emprestimo) return ofertaEmprestimo(); return gameOver(); }
+  const carta=CARTAS.find(c=>{try{return c.cond(S)}catch(e){return false}});
+  if(carta&&srandom()<0.7){ mostrarCarta(carta); return; }
+  irGestao();
+}
+function ofertaEmprestimo(){
+  const falta=Math.max(0,-S.caixa);
+  const valor=Math.max(600,Math.ceil((falta+900)/100)*100);
+  const total=Math.round(valor*1.25), parcela=Math.max(20,Math.round(total/40));
+  const ov=document.createElement('div');ov.className='overlay';
+  ov.innerHTML=`<div class="sheet">
+    <div style="font-size:40px;text-align:center">🏦</div>
+    <h3 style="text-align:center">O banco te oferece fôlego</h3>
+    <p class="tiny muted" style="text-align:center;margin:0;line-height:1.5">Dias no vermelho. Um banco topa emprestar <b style="color:var(--gold)">${brl0(valor)}</b> pra você segurar as pontas. Você devolve <b>${brl0(total)}</b> em parcelas de <b>${brl0(parcela)}/dia</b>.</p>
+    <button class="cta" id="emp-sim">Aceitar o empréstimo</button>
+    <button class="cta ghost" id="emp-nao" style="color:var(--bad);border-color:var(--bad-soft)">Recusar e fechar as portas</button></div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#emp-sim').addEventListener('click',()=>{ S.caixa+=valor; S.emprestimo={saldo:total,parcela}; S.diasVermelho=0; salvar(); ov.remove(); atualizaHud(); flutua('🏦 Fôlego no caixa — bora virar o jogo!'); irGestao(); });
+  ov.querySelector('#emp-nao').addEventListener('click',()=>{ ov.remove(); gameOver(); });
+}
+function mostrarCarta(c){
+  $('#carta-ico').textContent=c.ico; $('#carta-tit').textContent=c.tit; $('#carta-desc').textContent=c.desc;
+  const box=$('#carta-ops');box.innerHTML='';
+  c.ops.forEach(op=>{
+    const b=document.createElement('button');b.className='cta ghost carta-op';
+    b.innerHTML=`<span class="ot">${op.txt}</span><span class="od">${op.od}</span>`;
+    b.addEventListener('click',()=>{try{op.ef(S)}catch(e){} atualizaHud(); salvar(); irGestao();});
+    box.appendChild(b);
+  });
+  mostra('tela-carta');
+}
+
+/* ===================== GESTÃO (abas) ===================== */
+function irGestao(){ if(S.diasVermelho>=CFG.diasVermelhoMax)return gameOver(); atualizaHud(); renderPrevisao(); renderGestao(); mostra('tela-gestao'); }
+function renderPrevisao(){
+  const el=$('#gestao-previsao'); if(!el)return;
+  const ds=DIAS_SEMANA[(S.diaSemana+1)%7];
+  const cl=CLIMAS[S.climaHoje];        // clima de amanhã (pré-sorteado no fechamento)
+  const t=tendObj();
+  // só os FATOS — o jogador tira a conclusão se vai bombar ou esvaziar
+  const chips=[`📅 ${ds.nome}`, `${cl.emoji} ${cl.nome}`];
+  if(t.id!=='normal') chips.push(`${t.emoji} ${t.nome}`);
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:9px">
+    <div style="font-size:20px">🔭</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:800;font-size:14px">Previsão de amanhã</div>
+      <div class="chips" style="margin-top:5px;justify-content:flex-start">${chips.map(c=>`<span class="chip">${c}</span>`).join('')}</div>
+    </div></div>`;
+}
+function renderGestao(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===gestaoTab));
+  const box=$('#gestao-conteudo');box.innerHTML='';
+  if(gestaoTab==='melhorias')renderMelhorias(box);
+  else if(gestaoTab==='cardapio')renderCardapio(box);
+  else if(gestaoTab==='estoque')renderEstoque(box);
+  else if(gestaoTab==='clube')renderClube(box);
+  else renderRede(box);
+}
+function renderMelhorias(box){
+  const nomes={estrutura:'Estrutura',ambiente:'Ambiente',qualidade:'Qualidade',alcance:'Alcance'};
+  for(const cat in UPGRADES){
+    const h=document.createElement('div');h.className='catbar';h.textContent=nomes[cat];box.appendChild(h);
+    UPGRADES[cat].forEach(u=>{
+      const lvl=S.upg[u.id], maxed=lvl>=u.max, custo=maxed?0:u.custos[lvl], bloq=!maxed&&custo>S.caixa;
+      const el=document.createElement('div');el.className='card shop-item';
+      el.innerHTML=`<div class="ico">${u.ico}</div><div class="info"><div class="nome">${u.nome}</div><div class="desc">${u.desc(lvl)}</div>
+        <div class="lvl">${'●'.repeat(lvl)}${'○'.repeat(u.max-lvl)}</div></div>
+        <button class="buy ${maxed?'max':''}" ${maxed||bloq?'disabled':''}>${maxed?'no máx.':brl0(custo)}</button>`;
+      if(!maxed&&!bloq)el.querySelector('.buy').addEventListener('click',()=>comprarUpgrade(u));
+      box.appendChild(el);
+    });
+  }
+}
+function comprarUpgrade(u){
+  const lvl=S.upg[u.id];if(lvl>=u.max)return;const c=u.custos[lvl];if(c>S.caixa)return;
+  S.caixa-=c;S.upg[u.id]++;
+  if(u.id==='fornGraoEsp')S.ing.graoEspecial.desbloq=true;
+  if(u.id==='fornGraoPre')S.ing.graoPremium.desbloq=true;
+  salvar();renderGestao();atualizaHud();flutua(`${u.ico} ${u.nome} pronto!`);
+}
+function renderCardapio(box){
+  const h=document.createElement('div');h.className='catbar';h.textContent='Adicionar ao cardápio';box.appendChild(h);
+  // agrupa por categoria (Quentes, Gelados, Refrescos, Comidas) — mais fácil de achar
+  Object.keys(CATS).forEach(cat=>{
+    const itens=CARDAPIO_LOJA.filter(c=>(S.prod[c.id]||{}).cat===cat);
+    if(!itens.length)return;
+    const sub=document.createElement('div');sub.className='tiny';sub.style.cssText='font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--gold-soft);margin:14px 2px 2px';sub.textContent=CATS[cat];box.appendChild(sub);
+    itens.forEach(c=>{
+      const p=S.prod[c.id], jaTem=p.ativo;
+      const ex1=!c.exige||S.upg[c.exige]>=1, ex2=!c.exige2||S.upg[c.exige2]>=1, ok=ex1&&ex2;
+      const el=document.createElement('div');el.className='card shop-item';
+      let btn;
+      if(jaTem)btn='<button class="buy max" disabled>no cardápio</button>';
+      else if(!ok)btn=`<button class="buy" disabled>trava: ${!ex1?c.exige:c.exige2}</button>`;
+      else btn=`<button class="buy" ${c.custo>S.caixa?'disabled':''}>${brl0(c.custo)}</button>`;
+      el.innerHTML=`<div class="ico">${c.ico}</div><div class="info"><div class="nome">${c.nome}</div><div class="desc">${c.desc}</div></div>${btn}`;
+      if(!jaTem&&ok&&c.custo<=S.caixa)el.querySelector('.buy').addEventListener('click',()=>{S.caixa-=c.custo;p.ativo=true;if(p.prep===0)p.prep=15;salvar();renderGestao();atualizaHud();flutua(`${c.ico} ${c.nome} no cardápio!`)});
+      box.appendChild(el);
+    });
+  });
+}
+function renderEstoque(box){
+  const info=document.createElement('div');info.className='card';info.style.cssText='background:var(--surface2);font-size:12.5px;line-height:1.5';
+  info.innerHTML='📦 <b>A despensa é opcional.</b> Você já compra o insumo na hora, ao preparar. Mas o preço <b>oscila</b> — comprar <b>barato</b> agora e guardar faz você pagar menos quando subir. Grão seco, água e refri não estragam; leite, gelo e comida fresca, sim. <b>Água e refri dá pra estocar aqui na promoção</b> (não vencem).';
+  box.appendChild(info);
+  if(S.contratoFornecedor){
+    const c=document.createElement('div');c.className='card';c.style.borderColor='var(--gold-soft)';
+    c.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+      <div style="font-size:22px">🤝</div>
+      <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px">Contrato com fornecedor · ativo</div>
+        <div class="tiny muted">grãos <b style="color:var(--good)">${Math.round(S.contratoFornecedor.desc*100)}% mais baratos</b> · custa ${brl(S.contratoFornecedor.custoDia)}/dia</div></div>
+      <button class="buy" id="cancelar-contrato" style="background:var(--surface3);color:var(--bad);border:1px solid var(--bad-soft)">Cancelar</button></div>`;
+    c.querySelector('#cancelar-contrato').addEventListener('click',()=>{ S.contratoFornecedor=null; salvar(); renderGestao(); atualizaHud(); flutua('Contrato encerrado 🤝'); });
+    box.appendChild(c);
+  }
+  Object.keys(S.ing).forEach(id=>{
+    const i=S.ing[id]; if(!i.desbloq)return;
+    const m=S.mercado[id]??1;
+    let selo;
+    if(m<0.93) selo='<span class="selo baixo">💚 barato · vale estocar</span>';
+    else if(m>1.08) selo='<span class="selo caro">🔺 caro · não estoque</span>';
+    else selo='<span class="selo justo">preço normal</span>';
+    const el=document.createElement('div');el.className='card ing-row';
+    el.innerHTML=`<div><div class="inm">${i.emoji} ${i.nome}</div>
+        <div class="meta">na despensa: ${Math.floor(i.estoque)} un${i.seco?'':' · perecível'}</div>
+        <div style="margin-top:4px">${selo}</div></div>
+      <div class="ing-price">${brl(precoIng(id))}<div class="tiny muted" style="font-weight:600;margin-top:1px">normal ${brl(i.base)}</div></div>
+      <div class="ing-buys"><button class="mini-buy" data-q="10">+10</button><button class="mini-buy" data-q="50">+50</button></div>`;
+    el.querySelectorAll('.mini-buy').forEach(b=>b.addEventListener('click',()=>{
+      const q=+b.dataset.q, custo=q*precoIng(id); if(custo>S.caixa){flutua('Caixa insuficiente');return}
+      S.caixa-=custo; i.estoque+=q; salvar(); renderGestao(); atualizaHud(); flutua(`${i.emoji} +${q} na despensa`);
+    }));
+    box.appendChild(el);
+  });
+  // bebidas LACRADAS (não vencem): dá pra estocar na promoção, igual grão — o preço delas também oscila
+  const lacrados=NAO_PERECE.map(id=>{const p=S.prod[id];if(p)p._id=id;return p;}).filter(p=>p&&p.ativo);
+  if(lacrados.length){
+    const h=document.createElement('div');h.className='catbar';h.textContent='Bebidas lacradas · não vencem, estoque à vontade';box.appendChild(h);
+    lacrados.forEach(p=>{
+      const m=S.mercado[p._id]??1, preco=custoUnit(p);
+      let selo;
+      if(m<0.93) selo='<span class="selo baixo">💚 em promoção · aproveite e estoque</span>';
+      else if(m>1.08) selo='<span class="selo caro">🔺 caro · espere baixar</span>';
+      else selo='<span class="selo justo">preço normal</span>';
+      const el=document.createElement('div');el.className='card ing-row';
+      el.innerHTML=`<div><div class="inm">${p.emoji} ${p.nome}</div>
+          <div class="meta">em estoque: ${Math.floor(p.estoque||0)} un · não vence</div>
+          <div style="margin-top:4px">${selo}</div></div>
+        <div class="ing-price">${brl(preco)}<div class="tiny muted" style="font-weight:600;margin-top:1px">normal ${brl(p.custoCompra)}</div></div>
+        <div class="ing-buys"><button class="mini-buy" data-q="10">+10</button><button class="mini-buy" data-q="50">+50</button></div>`;
+      el.querySelectorAll('.mini-buy').forEach(b=>b.addEventListener('click',()=>{
+        const q=+b.dataset.q, custo=q*custoUnit(p); if(custo>S.caixa){flutua('Caixa insuficiente');return}
+        S.caixa-=custo; p.estoque=(p.estoque||0)+q; salvar(); renderGestao(); atualizaHud(); flutua(`${p.emoji} +${q} no estoque`);
+      }));
+      box.appendChild(el);
+    });
+  }
+}
+function renderClube(box){
+  const tot=totalAssinantes();
+  const hero=document.createElement('div');hero.className='card raised clube-hero';
+  hero.innerHTML=`<div class="tiny muted" style="letter-spacing:.1em;text-transform:uppercase;font-weight:800">Assinantes ativos</div>
+    <div class="big">${tot}</div>
+    <div class="tiny muted">renda recorrente: <b style="color:var(--good)">${brl(receitaClubeMes())}/mês</b>${tot>0?' — pagam ao assinar e de novo quando terminam os cafés do plano':''}</div>`;
+  box.appendChild(hero);
+  if(tot>0){
+    const nota=document.createElement('div');nota.className='tiny muted';nota.style.cssText='margin:0 2px;line-height:1.45';
+    nota.innerHTML='💡 Quem assina <b>paga a mensalidade cheia no dia</b> (entra tudo no caixa) e paga de novo <b>quando termina os cafés do plano</b> — se faltar café e ele não tomar, o crédito não é gasto e ele demora mais pra renovar. Eles tomam o café do plano de graça, mas costumam <b>levar um acompanhamento pago</b> junto — é aí que está o lucro.';
+    box.appendChild(nota);
+  }
+
+  if(S.clube.planos.length===0){
+    const p=document.createElement('p');p.className='tiny muted';p.style.margin='0 2px';
+    p.textContent='Monte planos de assinatura: escolha as bebidas, quantos cafés por mês e a mensalidade. O cliente paga e vem buscar o café dele — receita garantida, mas você banca o café.';
+    box.appendChild(p);
+  }
+  S.clube.planos.forEach((pl,idx)=>{
+    const emos=pl.bebidas.map(b=>S.prod[b]?S.prod[b].emoji:'').join('');
+    const nomes=pl.bebidas.map(b=>S.prod[b]?S.prod[b].nome:b).join(' ou ');
+    const el=document.createElement('div');el.className='card shop-item';
+    el.innerHTML=`<div class="ico">${emos||'🎟️'}</div>
+      <div class="info"><div class="nome">${pl.nome||'Plano '+(idx+1)}</div>
+        <div class="desc">${pl.cota} cafés/mês (~${(pl.cota/30).toFixed(1).replace('.',',')}/dia) · ${nomes}</div>
+        <div class="lvl">${brl(pl.preco)}/mês · ${pl.assinantes||0} assinantes</div></div>
+      <button class="buy" style="background:var(--purple);color:#160c1e">Editar</button>`;
+    el.querySelector('.buy').addEventListener('click',()=>editarPlano(idx));
+    box.appendChild(el);
+  });
+  if(S.clube.planos.length<4){
+    const add=document.createElement('button');add.className='cta ghost';add.textContent='+ Criar plano';
+    add.addEventListener('click',()=>editarPlano(-1));
+    box.appendChild(add);
+  }
+}
+function editarPlano(idx){
+  const novo=idx<0;
+  const disp=['cafe','expresso','cappuccino'].filter(b=>S.prod[b]&&S.prod[b].ativo);
+  if(novo&&!disp.length){flutua('Ative um café no cardápio primeiro');return;}
+  const pl=novo?{nome:'',bebidas:[disp[0]],cota:30,preco:89.9,assinantes:0}:JSON.parse(JSON.stringify(S.clube.planos[idx]));
+  const ov=document.createElement('div');ov.className='overlay';
+  const sheet=document.createElement('div');sheet.className='sheet';
+  ov.appendChild(sheet);document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()});
+  function render(){
+    const valorMensal=pl.cota*precoMedioBebidas(pl);
+    const desc=valorMensal>0?Math.round((1-pl.preco/valorMensal)*100):0;
+    sheet.innerHTML=`<h3>${novo?'Novo plano':'Editar plano'}</h3>
+      <div class="tiny muted">Bebidas — marque uma, ou várias pra o cliente escolher.</div>
+      <div class="grao-opts" id="ep-beb" style="flex-wrap:wrap;gap:6px"></div>
+      <div class="field"><div class="flabel"><span>Cafés por mês</span><b>${pl.cota} · ~${(pl.cota/30).toFixed(1).replace('.',',')}/dia</b></div>
+        <div class="prep-row"><div class="stepper"><button id="ep-cm">−</button><span class="qtd">${pl.cota}</span><button id="ep-cp">+</button></div>
+        <span class="prep-cost dim">de 5 a 60</span></div></div>
+      <div class="field"><div class="flabel"><span>Mensalidade</span><b>${brl(pl.preco)}</b></div>
+        <input type="range" id="ep-preco" min="19.9" max="299.9" step="10" value="${pl.preco}"></div>
+      <div class="tiny" style="color:${desc>=0?'var(--good)':'var(--bad)'};font-weight:700">${desc>=0?`Economia de ${desc}% pro cliente — atrai bem`:`${-desc}% mais caro que avulso — quase ninguém assina`}</div>
+      <div class="row-btns"><button class="cta ghost" id="ep-cancel">Cancelar</button><button class="cta" id="ep-save">Salvar</button></div>
+      ${novo?'':'<button class="cta ghost" id="ep-del" style="color:var(--bad);border-color:var(--bad-soft)">Remover plano</button>'}`;
+    const bb=sheet.querySelector('#ep-beb');
+    bb.innerHTML=disp.length?disp.map(b=>`<div class="grao-opt ${pl.bebidas.includes(b)?'on':''}" data-b="${b}" style="flex:1 0 28%;min-width:0"><div class="gn" style="font-size:18px">${S.prod[b].emoji}</div><div class="gq">${S.prod[b].nome}</div></div>`).join(''):'<div class="tiny muted">Ative cafés no cardápio.</div>';
+    bb.querySelectorAll('.grao-opt').forEach(el=>el.addEventListener('click',()=>{const b=el.dataset.b;const i=pl.bebidas.indexOf(b);if(i>=0){if(pl.bebidas.length>1)pl.bebidas.splice(i,1)}else pl.bebidas.push(b);render()}));
+    sheet.querySelector('#ep-cm').addEventListener('click',()=>{pl.cota=Math.max(5,pl.cota-5);render()});
+    sheet.querySelector('#ep-cp').addEventListener('click',()=>{pl.cota=Math.min(60,pl.cota+5);render()});
+    const sl=sheet.querySelector('#ep-preco');sl.style.setProperty('--fill',((sl.value-19.9)/(299.9-19.9)*100)+'%');
+    sl.addEventListener('input',()=>{pl.preco=parseFloat(sl.value);render()});
+    sheet.querySelector('#ep-cancel').addEventListener('click',()=>ov.remove());
+    sheet.querySelector('#ep-save').addEventListener('click',()=>{
+      pl.bebidas=pl.bebidas.filter(b=>S.prod[b]&&S.prod[b].ativo);
+      if(!pl.bebidas.length){flutua('Escolha ao menos 1 bebida');return;}
+      if(novo)S.clube.planos.push(pl);else S.clube.planos[idx]=pl;
+      salvar();ov.remove();renderGestao();flutua('Plano salvo 🎟️');
+    });
+    if(!novo)sheet.querySelector('#ep-del').addEventListener('click',()=>{S.clube.planos.splice(idx,1);salvar();ov.remove();renderGestao();flutua('Plano removido')});
+  }
+  render();
+}
+
+function poisBairro(){
+  const t=tendObj(), amanha=DIAS_SEMANA[(S.diaSemana+1)%7], fds=amanha.dem>=1.1;   // sex/sáb (dias fortes)
+  const predio=(S.bonusBase||0)>0;
+  return [
+    {emo:'🏢',nome:'Prédio comercial',pos:'top',   ativo:predio, ef:predio?'traz café rápido de manhã':'escritórios ainda tímidos'},
+    {emo:'🎓',nome:'Escola',          pos:'left',  ativo:t.id==='estudante', ef:t.id==='estudante'?'estudantes em peso hoje':'movimento de estudante fraco'},
+    {emo:'☕',nome:'Concorrente',      pos:'right', rival:true, ef:'de olho no seu preço'},
+    {emo:'🌳',nome:'Praça',           pos:'bottom',ativo:fds, ef:fds?'bomba no fim de semana':'tranquila nos dias de semana'},
+  ];
+}
+function renderMapaBairro(box){
+  const t=tendObj(), cl=CLIMAS[S.climaHoje], pois=poisBairro();
+  const wrap=document.createElement('div');wrap.className='card';wrap.style.cssText='border-color:var(--teal);padding:12px';
+  const head=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <div style="font-size:18px">🗺️</div>
+    <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px">Seu bairro</div>
+      <div class="tiny muted">${cl.emoji} ${cl.nome}${t.id!=='normal'?` · ${t.emoji} ${t.nome}`:''}</div></div>
+    ${S.boost?'<span class="chip trend">🚀 em alta</span>':''}</div>`;
+  const cell=poi=>poi?`<div class="mapa-poi ${poi.rival?'rival':(poi.ativo?'on':'')}" data-ef="${poi.emo} ${poi.nome}: ${poi.ef}"><div style="font-size:21px">${poi.emo}</div><div class="tiny" style="font-weight:700;line-height:1.05">${poi.nome}</div><div style="font-size:9.5px;line-height:1.1;margin-top:1px;color:${poi.rival?'var(--bad)':poi.ativo?'var(--good)':'var(--ink-dim)'}">${poi.ef}</div></div>`:'<div></div>';
+  const cafe=`<div class="mapa-cafe"><div style="font-size:25px">☕</div><div class="tiny" style="font-weight:800">Sua cafeteria</div><div style="font-size:10px;color:var(--gold);font-weight:700">⭐ ${repGeral().toFixed(1).replace('.',',')}</div></div>`;
+  const at=p=>pois.find(x=>x.pos===p);
+  const grid=`<div class="mapa-grid">
+    <div></div>${cell(at('top'))}<div></div>
+    ${cell(at('left'))}${cafe}${cell(at('right'))}
+    <div></div>${cell(at('bottom'))}<div></div></div>`;
+  wrap.innerHTML=head+grid+`<div class="tiny muted" style="text-align:center;margin-top:8px">Toque num ponto pra ver o efeito.</div>`;
+  box.appendChild(wrap);
+  wrap.querySelectorAll('.mapa-poi').forEach(el=>el.addEventListener('click',()=>flutua(el.dataset.ef)));
+  if((S.filiais||[]).length){
+    const lbl=document.createElement('div');lbl.className='tiny muted';lbl.style.cssText='text-align:center;margin:2px';lbl.textContent='Outros bairros da sua rede:';box.appendChild(lbl);
+    const strip=document.createElement('div');strip.style.cssText='display:flex;gap:8px;flex-wrap:wrap;justify-content:center';
+    S.filiais.forEach(f=>{const pin=document.createElement('div');pin.className='mapa-poi on';pin.style.cssText='flex:0 0 auto;padding:8px 13px;cursor:default';pin.innerHTML=`<div style="font-size:19px">${f.emoji}</div><div class="tiny" style="font-weight:700">${f.nome}</div>`;strip.appendChild(pin);});
+    box.appendChild(strip);
+  }
+}
+function renderRede(box){
+  renderMapaBairro(box);
+  const rep=repGeral(), custo=custoNovaFilial(), pode=podeExpandir(), n=S.filiais.length;
+  const hero=document.createElement('div');hero.className='card raised';hero.style.cssText='text-align:center;padding:15px;border-color:var(--teal)';
+  hero.innerHTML=`<div class="tiny muted" style="letter-spacing:.1em;text-transform:uppercase;font-weight:800">Patrimônio</div>
+    <div style="font-family:var(--font-disp);font-size:32px;font-weight:900;color:var(--teal)">${brl0(patrimonio())}</div>
+    <div class="tiny muted" style="line-height:1.4">caixa ${brl0(S.caixa)}${n?` · ${n} ${n>1?'filiais':'filial'} · ${brl0(valorFiliais())}`:''}${dividaAtual()>0?` · <span style="color:var(--bad)">dívida ${brl0(dividaAtual())}</span>`:''}</div>`;
+  box.appendChild(hero);
+
+  if(n===0){
+    const info=document.createElement('div');info.className='card';info.style.cssText='background:var(--surface2);cursor:pointer';
+    info.innerHTML=`<div style="display:flex;align-items:center;gap:9px">
+      <div style="font-size:20px">🏪</div>
+      <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13.5px">Expandir a marca</div>
+        <div class="tiny muted">Abra outras cafeterias pela cidade quando a fama subir.</div></div>
+      <span class="tiny" style="color:var(--gold-soft);font-weight:800">${redeInfoAberto?'▲':'ⓘ'}</span></div>
+      ${redeInfoAberto?'<div class="tiny muted" style="margin-top:9px;line-height:1.5">Cada filial tem gerente e rende sozinha. O quanto fatura depende da <b>força da sua marca</b> (sua reputação) e da maré do bairro dela. Filial nova <b>demora a engatar</b> (prejuízo nas primeiras semanas) — só cresça com caixa de sobra.</div>':''}`;
+    info.addEventListener('click',()=>{redeInfoAberto=!redeInfoAberto;renderGestao();});
+    box.appendChild(info);
+  }
+
+  S.filiais.forEach(f=>{
+    const mat=clamp((f.dias||0)/20,0,1);
+    const fase=f.dias<=14?'engatando':'a todo vapor';
+    const mare=f.bairro>=1.08?'🔥 bairro aquecido':(f.bairro<=0.9?'🌧️ bairro fraco':'🍃 bairro estável');
+    const el=document.createElement('div');el.className='card';
+    el.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+      <div style="font-size:24px">${f.emoji}</div>
+      <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14.5px">Cafeteria do ${f.nome}</div>
+        <div class="tiny muted">${f.dias} ${f.dias===1?'dia':'dias'} · ${fase} · ${mare}</div>
+        <div class="rep-track" style="margin-top:6px"><div class="fill" style="width:${round(mat*100)}%;background:var(--teal)"></div></div></div></div>`;
+    box.appendChild(el);
+  });
+
+  if(pode){
+    const b=document.createElement('button');b.className='cta';b.style.cssText='background:linear-gradient(180deg,var(--teal),#4a857e);color:#04201c';
+    if(custo>S.caixa){b.disabled=true;b.textContent=`Faltam ${brl0(custo-S.caixa)} pra próxima cafeteria`;}
+    else b.innerHTML=`🏪 Abrir ${n===0?'a 2ª cafeteria':'mais uma cafeteria'} · ${brl0(custo)}`;
+    if(custo<=S.caixa)b.addEventListener('click',()=>{ if(abrirFilial())renderGestao(); });
+    box.appendChild(b);
+    if(custo<=S.caixa){const nota=document.createElement('p');nota.className='tiny muted';nota.style.cssText='margin:0 2px;text-align:center;line-height:1.4';nota.textContent='Ela começa no vermelho e vai engatando. Sua reputação puxa o faturamento de todas.';box.appendChild(nota);}
+  } else {
+    const info=document.createElement('div');info.className='card';info.style.cssText='text-align:center;border-style:dashed';
+    info.innerHTML=`<div style="font-size:22px">🔒</div><div style="font-weight:800;font-size:14px;margin-top:4px">Marca ainda em formação</div>
+      <div class="tiny muted" style="margin-top:3px;line-height:1.4">Chegue a <b style="color:var(--gold)">⭐${REP_EXPANDIR.toFixed(1).replace('.',',')}</b> de reputação pra franquear. Hoje: <b>⭐${rep.toFixed(1).replace('.',',')}</b></div>`;
+    box.appendChild(info);
+  }
+}
+
+/* ===================== FIM / MENU ===================== */
+function proximoDia(){S.dia++;S.diaSemana=(S.diaSemana+1)%7;irManha()}
+function gameOver(){$('#fim-dias').textContent=S.dia;$('#fim-melhor').textContent=brl0(Math.max(S.patrimonioPico||0,S.melhorDia));apagarSave();mostra('tela-fim')}
+let flyTimer=null;
+function flutua(txt){const o=document.querySelector('.toast-fly');if(o)o.remove();const d=document.createElement('div');d.className='toast-fly';d.textContent=txt;document.body.appendChild(d);clearTimeout(flyTimer);flyTimer=setTimeout(()=>d.remove(),1900)}
+function explicaRep(k){
+  const d=S.diag||{}, rep=S.rep[k], alvo=d.alvo?d.alvo[k]:rep, up=S.upg;
+  const dir=alvo>rep+1?'up':alvo<rep-1?'down':'flat';
+  let m='';
+  if(k==='custo'){
+    const f=d.fPrecoMedio||1;
+    m=f>1.06?'seus preços estão atrativos pro que entrega':f<0.94?'preços salgados afastam a clientela':'preços na média do que você oferece';
+  } else if(k==='ambiente'){
+    const faltam=[!up.mesas&&'mesas',!up.wifi&&'wi-fi',!up.musica&&'som',!up.ar&&'ar',!up.decor&&'decoração'].filter(Boolean);
+    if((d.filaP||0)>0.08) m='a fila incomoda'+(faltam.length?'; e falta '+faltam.slice(0,2).join('/'):'');
+    else m=faltam.length?'falta aconchego — invista em '+faltam.slice(0,3).join(', '):'ambiente bem cuidado';
+  } else if(k==='atendimento'){
+    if((d.filaP||0)>0.08) m='fila grande — contrate barista ou ponha mais mesas';
+    else if((d.faltaP||0)>0.06) m='faltou produto pra quem chegou — prepare mais';
+    else m=up.baristas?'a equipe está dando conta':'você sozinho no balcão — um barista ajuda';
+  } else if(k==='qualidade'){
+    const p=[]; if(!up.maquina)p.push('sem máquina de espresso'); if(S.graoAtivo==='graoComum')p.push('grão comum');
+    m=p.length?'café simples: '+p.join(' e '):'café caprichado (grão bom + máquina)';
+  } else if(k==='variedade'){
+    const n=produtosAtivos().length, c=new Set(produtosAtivos().map(p=>p.cat)).size;
+    m=n<=1?'só um item no cardápio — adicione mais':n<=3?'cardápio ainda enxuto':`bom leque (${n} itens, ${c} tipos)`;
+  }
+  return {dir,m};
+}
+function abreReputacao(){
+  if(!S)return;
+  const ov=document.createElement('div');ov.className='overlay';
+  const sheet=document.createElement('div');sheet.className='sheet';sheet.style.maxHeight='88vh';sheet.style.overflowY='auto';
+  const meta=[['custo','💰','Custo-benefício'],['ambiente','✨','Ambiente'],['atendimento','🧑‍🍳','Atendimento'],['qualidade','☕','Qualidade'],['variedade','🍽️','Variedade']];
+  const linhas=meta.map(([k,ic,nm])=>{
+    const v=round(S.rep[k]), e=explicaRep(k);
+    const seta=e.dir==='up'?'<span class="delta up">▲ subindo</span>':e.dir==='down'?'<span class="delta down">▼ caindo</span>':'<span class="delta" style="color:var(--ink-dim)">▬ estável</span>';
+    return `<div style="display:flex;flex-direction:column;gap:4px">
+      <div class="rep-row"><span class="rk">${ic} ${nm}</span><span class="rep-track"><span class="fill" style="width:${v}%"></span></span><span class="rv">${v}</span></div>
+      <div class="tiny dim" style="padding-left:2px;line-height:1.35">${seta} · ${e.m}</div></div>`;
+  }).join('');
+  sheet.innerHTML=`<h3>Reputação ⭐ ${repGeral().toFixed(1).replace('.',',')}</h3>
+    <div style="display:flex;flex-direction:column;gap:12px">${linhas}</div>
+    <p class="tiny muted" style="margin:0;line-height:1.45">A estrela é a média das cinco notas. Cada uma persegue um alvo definido pelo seu negócio — mire no que está puxando pra baixo.</p>
+    <button class="cta ghost" id="rep-fechar">Fechar</button>`;
+  ov.appendChild(sheet);document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()});
+  sheet.querySelector('#rep-fechar').addEventListener('click',()=>ov.remove());
+}
+function abreMenu(){
+  const ov=document.createElement('div');ov.className='overlay';
+  const sheet=document.createElement('div');sheet.className='sheet';sheet.style.maxHeight='90vh';sheet.style.overflowY='auto';
+  ov.appendChild(sheet);document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()});
+  let arm=false;
+  const seg=(val,opts)=>`<div class="seg">${opts.map(o=>`<button data-v="${o[0]}" class="${val===o[0]?'on':''}">${o[1]}</button>`).join('')}</div>`;
+  function render(){
+    const n=(S.filiais||[]).length;
+    sheet.innerHTML=`<h3>${n?'Sua rede ☕':'Sua cafeteria'}</h3>
+      <div class="rowline"><span>Dia</span><b>${S.dia}</b></div>
+      <div class="rowline"><span>Patrimônio</span><b style="color:var(--teal)">${brl(patrimonio())}</b></div>
+      <div class="rowline"><span>Caixa</span><b>${brl(S.caixa)}</b></div>
+      <div class="rowline"><span>Reputação</span><b>⭐ ${repGeral().toFixed(1).replace('.',',')}</b></div>
+      ${n?`<div class="rowline"><span>Cafeterias</span><b>${n+1} (1 matriz + ${n})</b></div>`:''}
+      ${dividaAtual()>0?`<div class="rowline"><span>Dívida</span><b style="color:var(--bad)">${brl(dividaAtual())}</b></div>`:''}
+      <div class="rowline"><span>Assinantes</span><b>${totalAssinantes()}</b></div>
+      <div class="rowline"><span>Melhor dia</span><b>${brl(S.melhorDia)}</b></div>
+      <div class="catbar" style="margin:8px 0 0">Configurações</div>
+      <div><div class="tiny muted" style="margin-bottom:5px">Ritmo do expediente</div>${seg(PREFS.velExp,[['normal','Normal'],['rapida','Rápido'],['pular','Pular']])}</div>
+      <div class="toggle-row"><div><div style="font-weight:800;font-size:13.5px">Menos animações</div><div class="tiny muted">Mais leve no celular</div></div><div class="switch ${PREFS.menosMov?'on':''}" id="mn-mov"><div class="dot"></div></div></div>
+      <div class="row-btns"><button class="cta ghost" id="mn-backup">📋 Copiar backup</button><button class="cta ghost" id="mn-restore">📥 Restaurar</button></div>
+      <div class="catbar" style="margin:8px 0 0">Mundo (semente)</div>
+      <div class="rowline"><span>🌱 Mundo desta partida</span><b style="font-family:monospace;letter-spacing:.05em">${seedCode(S.seed||0)}</b></div>
+      <div class="tiny muted" style="margin:-3px 0 2px;line-height:1.4">Fixe uma semente pra repetir/testar o mesmo mundo no próximo "recomeçar".</div>
+      <div class="row-btns"><input id="mn-seed" placeholder="${PREFS.seedFixa!=null?seedCode(PREFS.seedFixa):'ex.: 1A2B3C'}" value="${PREFS.seedFixa!=null?seedCode(PREFS.seedFixa):''}" style="flex:1;background:var(--bg);border:1px solid var(--line2);border-radius:11px;color:var(--ink);padding:9px 11px;font-family:monospace;font-size:13px;text-transform:uppercase"><button class="cta ghost" id="mn-seed-fix" style="flex:0 0 auto">Fixar</button></div>
+      ${PREFS.seedFixa!=null?`<div class="tiny" style="color:var(--gold);text-align:center;margin:-1px 0">Próximo jogo: mundo fixo <b>${seedCode(PREFS.seedFixa)}</b> · <span id="mn-seed-rand" style="text-decoration:underline">voltar pra aleatória</span></div>`:''}
+      <div class="catbar" style="margin:8px 0 0">Jogo</div>
+      <button class="cta ghost" id="mn-fechar">Voltar ao jogo</button>
+      <button class="cta" id="mn-reset" style="background:linear-gradient(180deg,var(--bad),var(--bad-soft));color:#fff">Recomeçar do zero</button>
+      <p class="tiny muted" id="mn-conf" ${arm?'':'hidden'} style="text-align:center;margin:0">Toque de novo pra confirmar — perde o progresso.</p>`;
+    sheet.querySelector('.seg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{PREFS.velExp=b.dataset.v;salvarPrefs();render();}));
+    sheet.querySelector('#mn-mov').addEventListener('click',()=>{PREFS.menosMov=!PREFS.menosMov;salvarPrefs();render();});
+    sheet.querySelector('#mn-backup').addEventListener('click',()=>{const data=localStorage.getItem(SAVE_KEY)||JSON.stringify(S);if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(data).then(()=>flutua('Backup copiado 📋')).catch(()=>flutua('Não deu pra copiar'));}else flutua('Não deu pra copiar');});
+    sheet.querySelector('#mn-restore').addEventListener('click',()=>{ov.remove();restaurarBackup();});
+    const sf=sheet.querySelector('#mn-seed-fix'); if(sf)sf.addEventListener('click',()=>{const v=parseSeed(sheet.querySelector('#mn-seed').value); if(v==null){flutua('Código inválido');return;} PREFS.seedFixa=v; salvarPrefs(); flutua('Semente fixa: '+seedCode(v)); render();});
+    const sr=sheet.querySelector('#mn-seed-rand'); if(sr)sr.addEventListener('click',()=>{PREFS.seedFixa=null;salvarPrefs();flutua('Semente aleatória');render();});
+    sheet.querySelector('#mn-fechar').addEventListener('click',()=>ov.remove());
+    sheet.querySelector('#mn-reset').addEventListener('click',()=>{if(!arm){arm=true;render();return}apagarSave();S=novoJogo();ov.remove();irManha()});
+  }
+  render();
+}
+function restaurarBackup(){
+  const ov=document.createElement('div');ov.className='overlay';
+  const sheet=document.createElement('div');sheet.className='sheet';
+  sheet.innerHTML=`<h3>📥 Restaurar backup</h3>
+    <p class="tiny muted" style="margin:0;line-height:1.4">Cole o texto do backup que você copiou (segure e "Colar"). Isso substitui o jogo atual.</p>
+    <textarea id="bk-txt" placeholder="cole aqui..." style="width:100%;height:90px;background:var(--bg);border:1px solid var(--line2);border-radius:11px;color:var(--ink);padding:10px;font-size:12px;font-family:monospace;resize:none"></textarea>
+    <div class="row-btns"><button class="cta ghost" id="bk-cancel">Cancelar</button><button class="cta" id="bk-load">Restaurar</button></div>`;
+  ov.appendChild(sheet);document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()});
+  sheet.querySelector('#bk-cancel').addEventListener('click',()=>ov.remove());
+  sheet.querySelector('#bk-load').addEventListener('click',()=>{
+    const txt=sheet.querySelector('#bk-txt').value.trim(); if(!txt){flutua('Cole o backup primeiro');return;}
+    try{ S=sanear(JSON.parse(txt)); salvar(); ov.remove(); atualizaHud(); irManha(); flutua('Backup restaurado ✅'); }
+    catch(e){ flutua('Backup inválido'); }
+  });
+}
+
+/* ===================== BOOT ===================== */
+$('#btn-comecar').addEventListener('click',()=>{S=novoJogo();atualizaHud();irManha()});
+$('#btn-continuar').addEventListener('click',()=>{S=carregar()||novoJogo();atualizaHud();irManha()});
+$('#btn-abrir').addEventListener('click',abrir);
+$('#btn-pos-dia').addEventListener('click',posDia);
+$('#btn-proximo').addEventListener('click',proximoDia);
+$('#btn-recomecar').addEventListener('click',()=>{S=novoJogo();irManha()});
+$('#btn-menu').addEventListener('click',abreMenu);
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{gestaoTab=t.dataset.tab;renderGestao()}));
+document.querySelectorAll('#fech-seg button').forEach(b=>b.addEventListener('click',()=>fechSec(b.dataset.sec)));
+document.querySelectorAll('#manha-seg button').forEach(b=>b.addEventListener('click',()=>manhaSec(b.dataset.sec)));
+$('#hud-rep-wrap').addEventListener('click',abreReputacao);
+
+(function(){carregarPrefs();const s=carregar();if(s&&s.dia){$('#btn-continuar').hidden=false;$('#btn-comecar').textContent='Começar de novo ☕'}mostra('tela-inicio')})();
+</script>
