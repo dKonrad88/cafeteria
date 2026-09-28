@@ -1042,15 +1042,33 @@ function renderGrao(){
     const g=el.dataset.g; if(!S.ing[g].desbloq)return; S.graoAtivo=g; renderGrao(); renderItensManha();
   }));
 }
+/* FASE 1 — preparo mira a PREVISÃO do jogo (não o servido de ontem). Previsão por produto + preparo sugerido (P2). */
+function _prevPorProduto(){ const ativos=produtosAtivos(), e=estimativaClientes(); let sw=0; const ws={};
+  ativos.forEach(p=>{ const w=p.pop*gostoBairro(p)*fatorPreco(p)*multTend(p); ws[p._id]=w; sw+=w; });
+  const dcl=demandaAssinantes(), out={}; ativos.forEach(p=>{ out[p._id]=(sw>0?e.mid*(ws[p._id]/sw):0)+(dcl[p._id]||0); });
+  return out; }
+function _prepSugeridoUn(p,prevMap){ prevMap=prevMap||_prevPorProduto(); const e=estimativaClientes();
+  const budget=Math.min(capacidadeHoje(), e.mid+estimativaClube());
+  const ativos=produtosAtivos(); let sw=0; ativos.forEach(q=>sw+=(prevMap[q._id]||0));
+  const share=sw>0?(prevMap[p._id]||0)/sw:1/ativos.length;
+  let prep=Math.max(0,Math.round(budget*share/5)*5); if(naoPerece(p))prep=Math.max(prep,Math.floor(p.estoque||0));
+  return prep; }
+function aplicarPreparoPrevisao(){ const pm=_prevPorProduto(); produtosAtivos().forEach(p=>{ p.prep=_prepSugeridoUn(p,pm); }); }
 function renderItensManha(){
   const box=$('#manha-itens');box.innerHTML='';
   const ativos=produtosAtivos();
+  // preparo mira a previsão: no 1º render do dia, o preparo já nasce na previsão (o jogador ajusta a partir dela)
+  if(S._prepPrevDia!==S.dia){ aplicarPreparoPrevisao(); S._prepPrevDia=S.dia; }
+  const _prevMap=_prevPorProduto();
   const dAssin=demandaAssinantes();
   if(Object.keys(dAssin).length){
     const c=document.createElement('div');c.className='card';c.style.cssText='background:var(--surface2);border-color:var(--purple);font-size:12.5px;line-height:1.4';
     c.innerHTML='🎟️ <b>Assinantes hoje</b> devem pedir '+Object.entries(dAssin).map(([b,q])=>`~${Math.ceil(q)} ${S.prod[b].emoji}`).join(' · ')+' — e muitos levam um acompanhamento pago. Tenha comida preparada!';
     box.appendChild(c);
   }
+  { const bt=document.createElement('button');
+    bt.style.cssText='width:100%;margin-bottom:8px;font-size:12.5px;font-weight:700;padding:9px;border-radius:10px;border:1px solid var(--gold-soft);background:rgba(232,169,75,.12);color:var(--gold);cursor:pointer';
+    bt.innerHTML='✨ Preparar tudo pela previsão'; bt.addEventListener('click',()=>{ aplicarPreparoPrevisao(); renderItensManha(); flutua('Preparo ajustado à previsão'); }); box.appendChild(bt); }
   let catAtual=null;
   ativos.sort((a,b)=>Object.keys(CATS).indexOf(a.cat)-Object.keys(CATS).indexOf(b.cat));
   ativos.forEach(p=>{
@@ -1064,7 +1082,7 @@ function renderItensManha(){
         <span class="selo ${selo.cls}">${selo.txt}</span></div>
       <div class="field"><div class="flabel"><span>Preço · custa ${brl(cu)}</span><b class="preco-val">${brl(p.preco)}</b></div>
         <input type="range" class="sl-preco" min="${p.min}" max="${p.max}" step="0.5" value="${p.preco}"></div>
-      <div class="field"><div class="flabel"><span>${np?'Deixar disponível 🔁':'Preparar hoje'}</span><b class="prep-val">${p.prep} un</b></div>
+      <div class="field"><div class="flabel"><span>${np?'Deixar disponível 🔁':'Preparar hoje'} · <span class="dim">previsto ~${Math.round(_prevMap[p._id]||0)}</span></span><b class="prep-val">${p.prep} un</b></div>
         <div class="prep-row"><div class="stepper"><button class="dec">−</button><span class="qtd">${p.prep}</span><button class="inc">+</button></div>
         <span class="prep-cost">${np&&est>0?`${est} guardado · repõe <b class="pc">${brl(custoRepor(p))}</b>`:`= <b class="pc">${brl(custoRepor(p))}</b>`}</span></div>
         ${np?'<div class="tiny dim" style="margin-top:3px;line-height:1.35">Lacrado — sobra não estraga, volta pro estoque. Você só paga a reposição.</div>':''}</div>`;
@@ -1105,7 +1123,7 @@ function renderFreelaCard(box){
       <div style="font-size:20px">🧑‍🍳</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:800;font-size:14px">Reforço de hoje${f>0?` · ${f} freela${f>1?'s':''}`:''}</div>
-        <div class="tiny muted">atende até <b style="color:${apertado?'var(--bad)':'var(--good)'}">${capHoje}/dia</b>${apertado?' — o movimento previsto pode passar disso!':''}</div>
+        <div class="tiny muted">movimento esperado <b>~${est.mid}</b> · atende até <b style="color:${apertado?'var(--bad)':'var(--good)'}">${capHoje}/dia</b>${apertado?' — o previsto passa disso; parte vai embora na fila!':''}</div>
       </div>
       <div class="stepper" style="flex:none"><button class="dec-f">−</button><span class="qtd" style="min-width:30px">${f}</span><button class="inc-f">+</button></div>
     </div>
