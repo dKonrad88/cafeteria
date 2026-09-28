@@ -319,10 +319,12 @@
         <button data-sec="balanco" class="on">🧾 Balanço</button>
         <button data-sec="movimento">👥 Movimento</button>
         <button data-sec="rep">⭐ Notas</button>
+        <button data-sec="clientes" id="fech-btn-clientes" hidden>🔬 Clientes</button>
       </div>
       <div id="fech-sec-balanco"><div class="card"><div class="linhas" id="fech-linhas"></div></div></div>
       <div id="fech-sec-movimento" hidden><div class="card" id="fech-fila" style="font-size:12.5px;line-height:1.5"></div></div>
       <div id="fech-sec-rep" hidden><div class="card"><div class="rep-bars" id="fech-rep-bars"></div></div></div>
+      <div id="fech-sec-clientes" hidden><div class="card" id="fech-clientes" style="font-size:12.5px;line-height:1.5"></div></div>
       <button class="cta" id="btn-pos-dia">Continuar →</button>
     </section>
 
@@ -589,6 +591,7 @@ function novoJogo(){
     flags:{}, diasVermelho:0, melhorDia:0, climaHoje:pick(Object.keys(CLIMAS)),
     maq:{uso:0}, diaSemana:Math.floor(srandom()*7), freelaHoje:0,
     filiais:[], emprestimo:null, metasVistas:[], patrimonioPico:CFG.caixaInicial,
+    boca:1, regulares:0,
   };
 }
 function salvar(){try{if(S)S.rngState=_rng;localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}
@@ -600,10 +603,11 @@ function sanear(s){ if(!s.clube||!Array.isArray(s.clube.planos)) s.clube={planos
   if(!Array.isArray(s.filiais)) s.filiais=[]; if(!Array.isArray(s.metasVistas)) s.metasVistas=[]; if(!('emprestimo' in s)) s.emprestimo=null; if(s.patrimonioPico==null) s.patrimonioPico=s.caixa||0;
   if(!Array.isArray(s.combosSalvos)) s.combosSalvos=[];
   if(!s.bairro||!s.bairro.tamanho) s.bairro=gerarBairro();   // save antigo ganha um bairro (retrofit)
+  if(s.boca==null)s.boca=1; if(s.regulares==null)s.regulares=0;   // memória/boca a boca (motor individual)
   return s; }
 function apagarSave(){try{localStorage.removeItem(SAVE_KEY)}catch(e){}}
 /* preferências (persistem separadas do save — não somem ao recomeçar) */
-let PREFS={velExp:'normal', menosMov:false, seedFixa:null};
+let PREFS={velExp:'normal', menosMov:false, seedFixa:null, motor:'novo'};
 function carregarPrefs(){try{const r=localStorage.getItem('graoagrao_prefs');if(r)PREFS=Object.assign(PREFS,JSON.parse(r))}catch(e){}}
 function salvarPrefs(){try{localStorage.setItem('graoagrao_prefs',JSON.stringify(PREFS))}catch(e){}}
 
@@ -776,7 +780,9 @@ function estimativaClientes(){
 }
 
 /* ===================== SIMULAÇÃO ===================== */
-function simularDia(){
+// Dispatcher: motor CLÁSSICO (demanda agregada) ou INDIVIDUAL (clientes um a um, Etapa 2).
+function simularDia(){ return (PREFS.motor==='antigo') ? simularDiaClassico() : simularDiaV2(); }
+function simularDiaClassico(){
   // pane no equipamento: EMERGE do desgaste por uso, não de sorteio fixo. Revise a tempo e ela nunca quebra.
   let conserto=0, evento;
   const desgaste=(S.maq?.uso||0)/CFG.maqLimite;      // 1.0 = passou da hora da revisão
@@ -922,6 +928,143 @@ function simularDia(){
     assinAtend:round(assinAtend),casadaVend:round(casadaVend),rNovo,dRep,porItem,demandaTotal:round(demandaTotal),cap:round(cap),
     combosVend,receitaCombo,combosRes,
     usoMaquina,desgaste,filaP,faltaP,fPrecoMedio,alvo};
+}
+/* ===================== MOTOR INDIVIDUAL (Etapa 2) ===================== */
+// Cada walk-in é uma PESSOA que decide comprar ou não (preço vs. quanto topa pagar, estoque).
+// Upgrades de ambiente agem AQUI (não em +reputação): música=paciência, wifi/fidelidade=retorno(memória),
+// redes=alcance do boca a boca, geladeira=apelo dos gelados. Guarda o motivo de cada um pro painel de debug.
+let ultimoDebugV2=null;
+function mktV2(){ return 1+(S.bonusBase||0)+(S.boost?(S.boost.mult-1):0); }   // sem redes (redes agora é boca a boca)
+function simularDiaV2(){
+  let conserto=0, evento;
+  const desgaste=(S.maq?.uso||0)/CFG.maqLimite;
+  const chancePane=clamp((desgaste-0.85)*0.7,0,0.6);
+  if(S.dia>=3 && srandom()<chancePane){ conserto=90+S.upg.maquina*45; evento={tipo:'ruim',ico:'🔧',tit:'A máquina quebrou!',desc:`Você forçou demais sem revisar. A cafeteira parou no meio da manhã — o conserto de emergência saiu ${brl(conserto)}.`,cap:0.55,_pane:true}; }
+  else evento=sorteiaEvento();
+  const clima=CLIMAS[S.climaHoje];
+  const ativos=produtosAtivos();
+  const b=S.bairro||{renda:.5,sensPreco:.6,pressa:.5};
+  // pesos SEM fator de preço (o preço é decidido por cliente); com afinidade climática, gosto do bairro e apelo de gelado (geladeira)
+  let somaPesos=0, sp=0, spw=0;
+  ativos.forEach(p=>{
+    let af=1;
+    if(p.cat==='gelado'||p.cat==='refresco') af=clima.temp>0?1+clima.temp*0.25:0.6;
+    if(p.cat==='quente') af=clima.temp<0?1+(-clima.temp)*0.18:0.85;
+    const g=gostoBairro(p), gel=((p.cat==='gelado'||p.cat==='refresco')&&S.upg.geladeira?1+0.12*S.upg.geladeira:1);
+    p._fp=fatorPreco(p); p._peso=p.pop*g*multTend(p)*af*gel;
+    somaPesos+=p._peso; sp+=p.pop*g; spw+=p.pop*g*p._fp;
+  });
+  const fPrecoMedio=sp>0?spw/sp:1;   // só pra nota de custo-benefício
+  // ---- nº de walk-ins: reputação + boca a boca + fiéis (SEM fator de preço) ----
+  const boca=clamp(S.boca??1,0.7,1.4);
+  let nWalk=baseCidade()*fatorRep()*clima.dem*fatorDiaSemana()*mktV2()*boca*(evento.dem||1)*rnd(.9,1.1)*(S.upg.delivery?1.18:1);
+  (S.combos||[]).forEach(cb=>{ if(cb&&cb.ativo){const its=cb.itens.filter(id=>S.prod[id]&&S.prod[id].ativo);if(its.length>=2){const vc=its.reduce((a,id)=>a+S.prod[id].preco,0);nWalk*=1+clamp(1-cb.preco/vc,0,0.7)*0.2;}} });
+  const regulares=Math.round(S.regulares||0);
+  const demanda=Math.max(0,Math.round(nWalk))+regulares;   // walk-ins de hoje (novos + fiéis que voltam)
+  // ---- clube + casadinho (agregado) ----
+  const demAssinProd=demandaAssinantes(); let demAssinTotal=0; for(const k in demAssinProd) demAssinTotal+=demAssinProd[k];
+  const varNorm=clamp((ativos.length-1)/6,0,1);
+  const taxaCasada=clamp(0.30+varNorm*0.35+(repGeral()/5)*0.15,0,0.85);
+  const extraDemanda=demAssinTotal*taxaCasada;
+  let somaPesosEx=0; ativos.forEach(p=>{ p._pesoEx=p._peso*(p.cat==='comida'?3:p.cat==='refresco'?1.8:p.cat==='gelado'?1.3:0.5); somaPesosEx+=p._pesoEx; });
+  // ---- capacidade (música = mais paciência na fila) ----
+  const cap=capacidadeHoje()*(evento.cap||1)*(1+0.05*(S.upg.musica||0));
+  const demandaTotal=demanda+extraDemanda+demAssinTotal;
+  const atend=Math.min(demandaTotal,cap);
+  const perdidosFila=Math.max(0,demandaTotal-cap);
+  const fracAtend=demandaTotal>0?atend/demandaTotal:1;
+  let receita=0,receitaDeliv=0,custoIng=0,custoRevenda=0,perdaSobra=0,totalFaltou=0,totalVend=0,assinAtend=0,casadaVend=0,usoMaquina=0,perdidosPreco=0;
+  const prepDisp={}; ativos.forEach(p=>prepDisp[p._id]=dispHoje(p));
+  const M={}; ativos.forEach(p=>M[p._id]={id:p._id,nome:p.nome,emoji:p.emoji,vend:0,faltou:0,vendAssin:0});
+  // ---- combos (desviam avulsos, consomem estoque antes) ----
+  let combosVend=0,receitaCombo=0,fracCombo=0; const combosRes=[];
+  (S.combos||[]).forEach(cb=>{ if(!cb||!cb.ativo)return; const its=cb.itens.filter(id=>S.prod[id]&&S.prod[id].ativo); if(its.length<2)return;
+    const cheio=its.reduce((a,id)=>a+S.prod[id].preco,0), desc=clamp(1-cb.preco/cheio,0,0.7);
+    let frac=clamp(0.12+desc*0.9,0,0.5); frac=Math.min(frac,Math.max(0,0.6-fracCombo)); fracCombo+=frac;
+    const demC=demanda*frac*fracAtend; let lim=Math.floor(demC); its.forEach(id=>lim=Math.min(lim,Math.floor(prepDisp[id])));
+    const vend=Math.max(0,lim), faltou=Math.max(0,round(demC)-vend);
+    its.forEach(id=>{ prepDisp[id]-=vend; const p=S.prod[id],c=vend*custoUnit(p); if(p.tipo==='revenda')custoRevenda+=c;else custoIng+=c; });
+    receita+=vend*cb.preco; totalVend+=vend*its.length; totalFaltou+=faltou;
+    its.forEach(id=>{if(S.prod[id].receita&&S.prod[id].receita.grao)usoMaquina+=vend;});
+    combosVend+=vend; receitaCombo+=vend*cb.preco; combosRes.push({nomes:its.map(id=>S.prod[id].nome),vend,desc});
+  });
+  // ---- AGENTES: walk-ins avulsos, um a um ----
+  const nAv=Math.round(demanda*(1-fracCombo)*fracAtend);
+  let satSoma=0, satN=0, comprouN=0; const contagem={comprou:0,caro:0,esgotou:0}; const amostra=[];
+  const filaAlta=perdidosFila>demandaTotal*0.15;
+  for(let i=0;i<nAv;i++){
+    const orc=clamp((b.renda??.5)+rnd(-.28,.28),0.05,1.25), sens=clamp((b.sensPreco??.6)+rnd(-.22,.22),0.05,1);
+    let r0=srandom()*somaPesos, quer=ativos[0]; for(const p of ativos){ if((r0-=p._peso)<=0){quer=p;break;} }
+    let prod=quer, motivo='', comprou=false;
+    if(prepDisp[quer._id]<1){ const alt=ativos.filter(p=>prepDisp[p._id]>=1); if(alt.length&&srandom()<0.5) prod=pick(alt); else { motivo='esgotou'; M[quer._id].faltou++; totalFaltou++; } }
+    if(!motivo){
+      const disp=justoEff(prod)*(0.75+orc*0.6), razao=prod.preco/Math.max(0.1,disp);
+      const pOk=clamp(1-sens*clamp(razao-1,0,2.5),0,1);
+      if(srandom()<pOk){ comprou=true; motivo='comprou'; } else { motivo='caro'; perdidosPreco++; }
+    }
+    if(comprou){
+      prepDisp[prod._id]-=1; M[prod._id].vend++; comprouN++;
+      const cu=custoUnit(prod); if(prod.tipo==='revenda')custoRevenda+=cu; else custoIng+=cu;
+      const bruto=prod.preco; if(S.upg.delivery){const dv=bruto*0.22;receitaDeliv+=dv*(1-CFG.taxaDelivery);receita+=bruto-dv;}else receita+=bruto;
+      totalVend++; if(prod.receita&&prod.receita.grao)usoMaquina++;
+      const sat=clamp(0.6+(prod===quer?0.1:-0.05)+0.05*(S.upg.musica||0)-(filaAlta?0.15:0),0,1); satSoma+=sat; satN++;
+    }
+    contagem[motivo]=(contagem[motivo]||0)+1;
+    if(amostra.length<60) amostra.push({orcamento:+orc.toFixed(2),sensPreco:+sens.toFixed(2),queria:quer.nome,levou:comprou?prod.nome:null,motivo});
+  }
+  // ---- clube (café do plano, não paga) + casadinho (paga) por produto, no estoque que sobrou ----
+  ativos.forEach(p=>{
+    const querA=Math.round((demAssinProd[p._id]||0)*fracAtend), querE=Math.round((somaPesosEx>0?extraDemanda*(p._pesoEx/somaPesosEx):0)*fracAtend);
+    const vA=Math.min(querA,Math.floor(prepDisp[p._id])); prepDisp[p._id]-=vA;
+    const vE=Math.min(querE,Math.floor(prepDisp[p._id])); prepDisp[p._id]-=vE;
+    assinAtend+=vA; casadaVend+=vE; M[p._id].vend+=vA+vE; M[p._id].vendAssin+=vA;
+    const falt=Math.max(0,querA-vA)+Math.max(0,querE-vE); totalFaltou+=falt; M[p._id].faltou+=falt;
+    const cu=custoUnit(p); if(p.tipo==='revenda')custoRevenda+=(vA+vE)*cu; else custoIng+=(vA+vE)*cu;
+    const bruto=vE*p.preco; if(S.upg.delivery){const dv=bruto*0.22;receitaDeliv+=dv*(1-CFG.taxaDelivery);receita+=bruto-dv;}else receita+=bruto;
+    totalVend+=vA+vE; if(p.receita&&p.receita.grao)usoMaquina+=vA+vE;
+  });
+  // ---- sobra/perda + fecha porItem ----
+  const porItem=[]; ativos.forEach(p=>{ const sobra=Math.max(0,prepDisp[p._id]), cu=custoUnit(p); if(!naoPerece(p)) perdaSobra+=sobra*cu*(S.upg.geladeira?0.7:1); const pi=M[p._id]; pi.sobra=round(sobra); pi.guarda=naoPerece(p); porItem.push(pi); });
+  // ---- reputação (ambiente SEM wifi/música; SEM bônus de fidelidade — eles agem no cliente) ----
+  const filaP=demandaTotal>0?perdidosFila/demandaTotal:0, faltaP=atend>0?totalFaltou/atend:0;
+  const alvo={
+    custo: clamp(62+(fPrecoMedio-1)*110,5,100),
+    ambiente: clamp(52+S.upg.mesas*7+S.upg.ar*12+S.upg.decor*9-filaP*45,5,100),
+    atendimento: clamp(56+S.upg.baristas*13+S.upg.treino*10-filaP*55-faltaP*28,5,100),
+    qualidade: clamp(38+S.upg.maquina*12+qualGrao()*30+S.upg.treino*6+S.upg.vitrine*8,5,100),
+    variedade: clamp(30+ativos.length*7+new Set(ativos.map(p=>p.cat)).size*9,5,100),
+  };
+  const rNovo={}, dRep={};
+  for(const k in S.rep){ const nv=clamp(S.rep[k]+(alvo[k]-S.rep[k])*0.28,0,100); dRep[k]=nv-S.rep[k]; rNovo[k]=nv; }
+  if(evento.rep) for(const k in evento.rep){ if(rNovo[k]!=null){ const d=evento.rep[k]; rNovo[k]=clamp(rNovo[k]+d,0,100); dRep[k]=(dRep[k]||0)+d; } }
+  // ---- memória (fiéis) + boca a boca ----
+  const satDiaAg=satN>0?satSoma/satN:0.5;
+  const retencao=clamp(0.10+0.05*(S.upg.wifi||0)+0.07*(S.upg.fidelidade||0),0,0.6);   // wifi/fidelidade = mais gente volta
+  const novosFieis=comprouN*retencao*clamp(satDiaAg,0,1);
+  S.regulares=clamp((S.regulares||0)*0.90 + novosFieis, 0, cap*1.3);                    // decaem ~10%/dia; sobem com clientes felizes
+  const alcanceBoca=1+0.12*(S.upg.redes||0);                                            // redes = boca a boca chega mais longe
+  const alvoBoca=clamp(0.85+(satDiaAg-0.5)*0.7*alcanceBoca-(filaP*0.4),0.7,1.4);
+  S.boca=clamp((S.boca??1)+(alvoBoca-(S.boca??1))*0.30,0.7,1.4);                        // reputação de boca a boca move devagar
+  // ---- gorjeta ----
+  const satDia=clamp((rNovo.atendimento*0.45+rNovo.ambiente*0.30+rNovo.custo*0.25)/100-filaP*0.5-faltaP*0.35,0,1);
+  const gorjeta=Math.round(atend*clamp((satDia-0.5)*1.6,0,0.9)*100)/100;
+  // ---- contagens, clube, filiais, custos, lucro ----
+  const itensVendidos=round(totalVend);
+  const vendasPagas=round(combosVend+porItem.reduce((a,i)=>a+(i.vend-i.vendAssin),0));
+  const ticketMedio=vendasPagas>0?(receita+receitaDeliv)/vendasPagas:0;
+  const semComprar=round(perdidosFila+totalFaltou+perdidosPreco);
+  const atendFrac=demAssinTotal>0?assinAtend/demAssinTotal:1;
+  const clube=atualizaClube({expostos:vendasPagas,satDia,faltaP,atendFrac});
+  const filiais=simulaFiliais();
+  const salarios=S.upg.baristas*CFG.salarioBarista+(S.freelaHoje||0)*CFG.salarioFreela;
+  const fixo=CFG.fixoBase+S.upg.mesas*CFG.custoMesaDia+(S.custoFornecedor||0)+(S.contratoFornecedor?S.contratoFornecedor.custoDia:0)+(S.upg.ar?10:0);
+  const lucro=receita+clube.receita+receitaDeliv+gorjeta+filiais.lucro-custoIng-custoRevenda-perdaSobra-salarios-fixo-conserto;
+  ultimoDebugV2={contagem, amostra, nWalk:Math.round(nWalk), regulares, boca:+(S.boca).toFixed(2), satDia:+satDiaAg.toFixed(2), perdidosPreco, perdidosFila:round(perdidosFila)};
+  return {evento,receita,receitaClube:clube.receita,clubeNovos:clube.novos,clubeNovosPlanos:clube.novosPorPlano,clubeRenov:clube.renovados,clubeCancel:clube.cancelados,receitaDeliv,gorjeta,conserto,custoIng,custoRevenda,perdaSobra,salarios,fixo,lucro,
+    filiaisLucro:filiais.lucro,filiaisBruto:filiais.bruto,filiaisCusto:filiais.custo,filiaisDet:filiais.det,
+    itensVendidos,vendasPagas,ticketMedio,semComprar,perdidosFila:round(perdidosFila),faltou:round(totalFaltou),perdidosPreco:round(perdidosPreco),
+    assinAtend:round(assinAtend),casadaVend:round(casadaVend),rNovo,dRep,porItem,demandaTotal:round(demandaTotal),cap:round(cap),
+    combosVend,receitaCombo,combosRes,usoMaquina,desgaste,filaP,faltaP,fPrecoMedio,alvo,_debug:ultimoDebugV2};
 }
 function sorteiaEvento(){
   const eleg=EVENTOS.filter(e=>{try{return !e.cond||e.cond(S)}catch(err){return false}});
@@ -1290,24 +1433,46 @@ function irFechamento(){
 
   // ---- FUNIL DO DIA: conta a história de quantos vieram e onde a gente se perdeu (sempre visível) ----
   const fila=$('#fech-fila'); fila.hidden=false; fila.style.borderColor='var(--line2)';
-  const apareceram=r.demandaTotal, fil=r.perdidosFila, flt=r.faltou;
-  const chegaram=Math.max(0,apareceram-fil), levaram=Math.max(0,chegaram-flt);
+  const apareceram=r.demandaTotal, fil=r.perdidosFila, flt=r.faltou, prc=r.perdidosPreco||0;
+  const chegaram=Math.max(0,apareceram-fil), levaram=Math.max(0,chegaram-flt-prc);
   const step=(emo,lbl,num,cor)=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 0"><span style="font-size:18px">${emo}</span><span style="flex:1;font-weight:800;font-size:13.5px">${lbl}</span><span style="font-weight:900;font-size:19px;color:${cor};font-family:var(--font-disp)">${num}</span></div>`;
   const leak=(emo,num,txt,motivo)=>`<div style="padding:1px 0 4px 30px"><div style="display:flex;align-items:baseline;gap:6px;color:var(--bad)"><span style="font-size:12px">↘</span><span style="font-size:12.5px;font-weight:800">${emo} ${num} ${txt}</span></div><div style="font-size:11px;color:var(--ink-dim);padding-left:19px;line-height:1.35">${motivo}</div></div>`;
   let corpo=step('👥','Apareceram na porta',apareceram,'var(--ink)');
   if(fil>0) corpo+=leak('🚶',fil,'desistiram da fila',`sua capacidade era ~${r.cap}/dia — barista/mesas/freela deixam entrar mais`);
   corpo+=step('🚪','Chegaram ao balcão',chegaram,'var(--gold)');
+  if(prc>0) corpo+=leak('💸',prc,'acharam caro e desistiram','o preço passou do que essa gente topa pagar — bairro sensível');
   if(flt>0) corpo+=leak('😕',flt,'não acharam o produto','o que queriam esgotou — precisava ter preparado mais');
   corpo+=step('✅','Levaram algo pra casa',levaram,'var(--good)');
-  let dica;
-  if(fil<=2&&flt<=2) dica='👍 Dia redondo — quase todo mundo foi atendido.';
-  else if(fil>flt) dica='💡 Hoje o gargalo foi a FILA (capacidade): mais barista, mesas ou um freela deixam mais gente entrar.';
-  else if(flt>fil) dica='💡 Hoje o gargalo foi o ESTOQUE: prepare mais dos itens que esgotaram (veja os "faltou" acima).';
-  else dica='💡 Perdeu gente na fila E por falta de produto — reforce capacidade E preparo.';
+  let dica; const maior=Math.max(fil,flt,prc);
+  if(fil<=2&&flt<=2&&prc<=2) dica='👍 Dia redondo — quase todo mundo foi atendido.';
+  else if(maior===prc&&prc>2) dica='💡 Hoje o gargalo foi o PREÇO: muita gente achou caro. Esse bairro é sensível — teste um preço mais baixo.';
+  else if(maior===fil) dica='💡 Hoje o gargalo foi a FILA (capacidade): mais barista, mesas ou um freela deixam mais gente entrar.';
+  else if(maior===flt) dica='💡 Hoje o gargalo foi o ESTOQUE: prepare mais dos itens que esgotaram (veja os "faltou" acima).';
+  else dica='💡 Perdeu gente por mais de um motivo — olhe os vazamentos acima.';
   fila.innerHTML=`<div style="font-family:var(--font-disp);font-weight:600;font-size:16px">Movimento do dia</div>
     <div style="margin:9px 0 4px">${corpo}</div>
     <div style="font-size:12.5px;color:var(--gold);font-weight:700;line-height:1.4;border-top:1px solid var(--line);padding-top:10px">${dica}</div>
     <div style="font-size:11.5px;color:var(--ink-dim);margin-top:7px;line-height:1.4">Dos ${levaram} que levaram algo: <b>${r.vendasPagas} vendas pagas</b>${r.assinAtend>0?` + <b>${r.assinAtend} cafés do clube</b> (já pagos)`:''}. Lembre: 1 combo = 1 venda, 2 itens.</div>`;
+
+  // ---- PAINEL DE DEBUG (motor individual): por que cada cliente comprou ou não ----
+  const btnCli=$('#fech-btn-clientes'), secCli=$('#fech-clientes');
+  if(r._debug && secCli){
+    if(btnCli)btnCli.hidden=false;
+    const d=r._debug, c=d.contagem||{};
+    const linha=(emo,lbl,n,cor)=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line)"><span>${emo} ${lbl}</span><b style="color:${cor}">${n||0}</b></div>`;
+    const am=d.amostra||[], div=[];
+    ['comprou','caro','esgotou'].forEach(mv=>{const cl=am.find(x=>x.motivo===mv);if(cl)div.push(cl);});
+    am.forEach(cl=>{ if(div.length<4&&div.indexOf(cl)<0)div.push(cl); });
+    const cliCard=cl=>{ const bom=cl.motivo==='comprou', cor=bom?'var(--good)':'var(--bad)';
+      const txt=bom?`levou ${cl.levou}`:(cl.motivo==='caro'?`achou o ${cl.queria} caro e saiu`:`queria ${cl.queria}, tinha esgotado`);
+      const orcTxt=cl.orcamento<0.35?'💸 bolso curto':cl.orcamento>0.7?'💰 bolso folgado':'bolso médio';
+      const sensTxt=cl.sensPreco>0.7?'liga muito pra preço':cl.sensPreco<0.4?'nem liga pra preço':'preço na média';
+      return `<div style="background:var(--surface2);border:1px solid var(--line);border-left:3px solid ${cor};border-radius:9px;padding:8px 10px"><div style="font-weight:800;color:${cor};font-size:12.5px">${bom?'✅':'🚫'} ${txt}</div><div style="font-size:11px;color:var(--ink-soft);margin-top:2px">${orcTxt} · ${sensTxt}</div></div>`; };
+    secCli.innerHTML=`<div style="font-family:var(--font-disp);font-weight:600;font-size:16px">Por que compraram (ou não)</div>
+      <div style="margin:8px 0">${linha('✅','Compraram',c.comprou,'var(--good)')}${linha('💸','Acharam caro',c.caro,'var(--bad)')}${linha('😕','Item esgotado',c.esgotou,'var(--bad)')}</div>
+      <div style="display:flex;flex-direction:column;gap:6px">${div.map(cliCard).join('')}</div>
+      <div style="font-size:11px;color:var(--ink-dim);margin-top:9px;line-height:1.4">🗣️ Boca a boca: <b>${Math.round(d.boca*100)}%</b> · 🔁 Fregueses fiéis: <b>${Math.round(d.regulares)}</b>. Cliente feliz volta e traz gente; preço alto e fila afastam.</div>`;
+  } else if(btnCli){ btnCli.hidden=true; }
 
   const ev=r.evento;
   if(ev.tipo!=='neutro'){$('#fech-evento').hidden=false;$('#fech-evento-ico').textContent=ev.ico;$('#fech-evento-tit').textContent=pickTxt(ev.tit);$('#fech-evento-desc').textContent=pickTxt(ev.desc)}
@@ -1318,7 +1483,7 @@ function irFechamento(){
   salvar(); mostra('tela-fechamento');
 }
 function fechSec(name){
-  ['balanco','movimento','rep'].forEach(s=>{const el=$('#fech-sec-'+s);if(el)el.hidden=(s!==name);});
+  ['balanco','movimento','rep','clientes'].forEach(s=>{const el=$('#fech-sec-'+s);if(el)el.hidden=(s!==name);});
   document.querySelectorAll('#fech-seg button').forEach(b=>b.classList.toggle('on',b.dataset.sec===name));
 }
 function renderRepBars(box,dRep){
@@ -1725,6 +1890,7 @@ function abreMenu(){
       <div class="rowline"><span>Melhor dia</span><b>${brl(S.melhorDia)}</b></div>
       <div class="catbar" style="margin:8px 0 0">Configurações</div>
       <div><div class="tiny muted" style="margin-bottom:5px">Ritmo do expediente</div>${seg(PREFS.velExp,[['normal','Normal'],['rapida','Rápido'],['pular','Pular']])}</div>
+      <div><div class="tiny muted" style="margin-bottom:5px">Motor de clientes <span class="dim">(debug)</span></div><div class="seg" id="mn-motor">${[['novo','Individual'],['antigo','Clássico']].map(o=>`<button data-v="${o[0]}" class="${(PREFS.motor||'novo')===o[0]?'on':''}">${o[1]}</button>`).join('')}</div></div>
       <div class="toggle-row"><div><div style="font-weight:800;font-size:13.5px">Menos animações</div><div class="tiny muted">Mais leve no celular</div></div><div class="switch ${PREFS.menosMov?'on':''}" id="mn-mov"><div class="dot"></div></div></div>
       <div class="row-btns"><button class="cta ghost" id="mn-backup">📋 Copiar backup</button><button class="cta ghost" id="mn-restore">📥 Restaurar</button></div>
       <div class="catbar" style="margin:8px 0 0">Mundo (semente)</div>
@@ -1739,6 +1905,7 @@ function abreMenu(){
       <button class="cta" id="mn-reset" style="background:linear-gradient(180deg,var(--bad),var(--bad-soft));color:#fff">Recomeçar do zero</button>
       <p class="tiny muted" id="mn-conf" ${arm?'':'hidden'} style="text-align:center;margin:0">Toque de novo pra confirmar — perde o progresso.</p>`;
     sheet.querySelector('.seg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{PREFS.velExp=b.dataset.v;salvarPrefs();render();}));
+    sheet.querySelector('#mn-motor').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{PREFS.motor=b.dataset.v;salvarPrefs();flutua(b.dataset.v==='novo'?'Motor: clientes individuais':'Motor: clássico');render();}));
     sheet.querySelector('#mn-mov').addEventListener('click',()=>{PREFS.menosMov=!PREFS.menosMov;salvarPrefs();render();});
     sheet.querySelector('#mn-backup').addEventListener('click',()=>{const data=localStorage.getItem(SAVE_KEY)||JSON.stringify(S);if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(data).then(()=>flutua('Backup copiado 📋')).catch(()=>flutua('Não deu pra copiar'));}else flutua('Não deu pra copiar');});
     sheet.querySelector('#mn-restore').addEventListener('click',()=>{ov.remove();restaurarBackup();});
