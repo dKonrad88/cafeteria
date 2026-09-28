@@ -373,14 +373,21 @@ const brl=v=>(v<0?'-':'')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFract
 const brl0=v=>'R$ '+Math.round(v).toLocaleString('pt-BR');
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 /* ===== PRNG semeado: cada partida é um "mundo" reprodutível; dá pra fixar a seed pra debug ===== */
-let _rng=0;
-function srandom(){ let t=(_rng=(_rng+0x6D2B79F5)|0); t=Math.imul(t^(t>>>15),1|t); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }
-function setSeed(s){ _rng=s|0; }
+/* PRNG DOIS STREAMS (FASE 0.1): rngM = MUNDO (bairro/concorrente, clima, evento, tendência, mercado, diaSemana inicial);
+   rngC = CLIENTES (atributos/compra por cliente, cancel/assinatura, pull do concorrente, filiais, pane, gatilho de carta).
+   Cada estratégia faz nº de rolagens diferente; separar garante clima/evento/tendência PAREADOS na mesma seed.
+   srandom/rnd/pick default = CLIENTES (catch-all); os pontos de MUNDO usam srMundo/rndM/pickM. */
+let _rngM=0, _rngC=0;
+function _scr(t){ t=Math.imul(t^(t>>>15),1|t); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }
+function srMundo(){ let t=(_rngM=(_rngM+0x6D2B79F5)|0); return _scr(t); }
+function srCli(){ let t=(_rngC=(_rngC+0x6D2B79F5)|0); return _scr(t); }
+function srandom(){ return srCli(); }                          // back-compat: stream padrão = clientes
+function setSeed(s){ _rngM=s|0; _rngC=(s^0x9E3779B9)|0; }      // dois streams derivados da mesma seed
 function novaSeed(){ return (Math.floor(Math.random()*0xFFFFFFFF))>>>0; }   // entropia real só pra CRIAR a seed
 function seedCode(s){ return ('00000'+(s>>>0).toString(36).toUpperCase()).slice(-6); }
 function parseSeed(code){ const n=parseInt(String(code||'').trim(),36); return isNaN(n)?null:(n>>>0); }
-const rnd=(a,b)=>a+srandom()*(b-a);
-const pick=a=>a[Math.floor(srandom()*a.length)];
+const rnd=(a,b)=>a+srCli()*(b-a);       const rndM=(a,b)=>a+srMundo()*(b-a);
+const pick=a=>a[Math.floor(srCli()*a.length)];   const pickM=a=>a[Math.floor(srMundo()*a.length)];
 const round=Math.round;
 
 /* ===================== BALANCEAMENTO ===================== */
@@ -429,9 +436,9 @@ const BAIRRO_NOMES={
   boemio:['Vila Boêmia','Bairro das Artes','Beco das Garrafas','Vila da Boemia','Largo dos Poetas','Vila Serelepe'],
   turistico:['Orla','Beira-Mar','Vila do Porto','Praia Serena','Costa Dourada','Centro Histórico','Enseada'],
 };
-function gerarNomeBairro(tipo){ return pick(BAIRRO_NOMES[tipo]||BAIRRO_NOMES.residencial); }
+function gerarNomeBairro(tipo){ return pickM(BAIRRO_NOMES[tipo]||BAIRRO_NOMES.residencial); }
 function gerarBairro(){
-  const tipo=pick(Object.keys(BAIRRO_TIPOS)), t=BAIRRO_TIPOS[tipo], r=a=>rnd(a[0],a[1]);
+  const tipo=pickM(Object.keys(BAIRRO_TIPOS)), t=BAIRRO_TIPOS[tipo], r=a=>rndM(a[0],a[1]);
   return { tipo, tipoNome:t.nome, emoji:t.emoji, nome:gerarNomeBairro(tipo),
     tamanho:Math.round(r(t.tamanho)),
     renda:+r(t.renda).toFixed(2), pressa:+r(t.pressa).toFixed(2), sensPreco:+r(t.sensPreco).toFixed(2), fdsAmp:+r(t.fdsAmp).toFixed(2),
@@ -451,11 +458,11 @@ const CONCORRENTE_TIPOS={
   oportunista:{nome:'Oportunista',emoji:'🦊', desc:'copia suas jogadas e aproveita brechas',            preco:[.90,1.05],fama:[2.2,3.2], reageEm:[3,5], corte:.06, piso:.78, promoChance:.25},
 };
 function gerarConcorrente(){
-  const tipo=pick(Object.keys(CONCORRENTE_TIPOS)), t=CONCORRENTE_TIPOS[tipo], r=a=>rnd(a[0],a[1]);
+  const tipo=pickM(Object.keys(CONCORRENTE_TIPOS)), t=CONCORRENTE_TIPOS[tipo], r=a=>rndM(a[0],a[1]);
   return { tipo, nome:t.nome, emoji:t.emoji, desc:t.desc,
     nivelPreco:+r(t.preco).toFixed(2), fama:+r(t.fama).toFixed(2),
-    distancia:+rnd(.12,.30).toFixed(2),   // conveniência: fração que prefere ir nele por ser perto
-    forca:1, promoDias:0, cooldown:round(rnd(t.reageEm[0],t.reageEm[1])), pressao:0, fechado:false };
+    distancia:+rndM(.12,.30).toFixed(2),   // conveniência: fração que prefere ir nele por ser perto
+    forca:1, promoDias:0, cooldown:round(rndM(t.reageEm[0],t.reageEm[1])), pressao:0, fechado:false };
 }
 function concorrentePreco(p){ const c=S.concorrente; return justoEff(p)*c.nivelPreco*(c.promoDias>0?0.85:1); }   // preço do rival pro mesmo produto
 /* Ingredientes (matéria-prima). preco = base * mercado (oscila). vol = volatilidade */
@@ -600,25 +607,25 @@ function novoJogo(){
   const bairro=gerarBairro();
   const concorrente=gerarConcorrente();
   return{
-    dia:1, caixa:CFG.caixaInicial, seed, rngState:seed, bairro, concorrente,
+    dia:1, caixa:CFG.caixaInicial, seed, rngStateM:seed, rngStateC:(seed^0x9E3779B9), bairro, concorrente,
     rep:{custo:64,ambiente:54,atendimento:58,qualidade:52,variedade:45},
     ing:ingredientesBase(), prod:produtosBase(),
     graoAtivo:'graoComum',
     upg:{maquina:0,baristas:0,mesas:0,geladeira:0,wifi:0,musica:0,ar:0,decor:0,fornGraoEsp:0,fornGraoPre:0,vitrine:0,treino:0,redes:0,delivery:0,fidelidade:0},
     mercado:{}, clube:{planos:[]}, combos:[{ativo:false,itens:[],preco:0},{ativo:false,itens:[],preco:0}], combosSalvos:[],
     tend:{id:'normal',dias:5}, boost:null, bonusBase:0, custoFornecedor:0, contratoFornecedor:null,
-    flags:{}, diasVermelho:0, melhorDia:0, climaHoje:pick(Object.keys(CLIMAS)),
-    maq:{uso:0}, diaSemana:Math.floor(srandom()*7), freelaHoje:0,
+    flags:{}, diasVermelho:0, melhorDia:0, climaHoje:pickM(Object.keys(CLIMAS)),
+    maq:{uso:0}, diaSemana:Math.floor(srMundo()*7), freelaHoje:0,
     filiais:[], emprestimo:null, metasVistas:[], patrimonioPico:CFG.caixaInicial,
     boca:1, regulares:0,
   };
 }
-function salvar(){try{if(S)S.rngState=_rng;localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}
+function salvar(){try{if(S){S.rngStateM=_rngM;S.rngStateC=_rngC;}localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}
 function carregar(){try{const r=localStorage.getItem(SAVE_KEY);if(!r)return null;return sanear(JSON.parse(r))}catch(e){return null}}
 function sanear(s){ if(!s.clube||!Array.isArray(s.clube.planos)) s.clube={planos:[]}; if(!Array.isArray(s.combos)) s.combos = s.combo ? [s.combo] : []; while(s.combos.length<2) s.combos.push({ativo:false,itens:[],preco:0}); delete s.combo; if(!s.maq)s.maq={uso:0};
   if(s.seed==null) s.seed=novaSeed();                        // save antigo sem seed → ganha um mundo agora
-  setSeed(s.rngState!=null? s.rngState : s.seed);            // continua de onde parou (ou do começo do mundo)
-  if(s.diaSemana==null)s.diaSemana=Math.floor(srandom()*7); if(s.freelaHoje==null)s.freelaHoje=0;
+  if(s.rngStateM!=null){ _rngM=s.rngStateM|0; _rngC=(s.rngStateC!=null?s.rngStateC:(s.seed^0x9E3779B9))|0; } else { setSeed(s.seed); }  // dois streams: continua de onde parou, ou re-semeia save antigo
+  if(s.diaSemana==null)s.diaSemana=Math.floor(srMundo()*7); if(s.freelaHoje==null)s.freelaHoje=0;
   if(!Array.isArray(s.filiais)) s.filiais=[]; if(!Array.isArray(s.metasVistas)) s.metasVistas=[]; if(!('emprestimo' in s)) s.emprestimo=null; if(s.patrimonioPico==null) s.patrimonioPico=s.caixa||0;
   if(!Array.isArray(s.combosSalvos)) s.combosSalvos=[];
   if(!s.bairro||!s.bairro.tamanho) s.bairro=gerarBairro();   // save antigo ganha um bairro (retrofit)
@@ -636,16 +643,16 @@ function precoIng(id){const i=S.ing[id];const m=S.mercado[id]??1;let p=i.base*m;
 function passoMercado(){
   for(const id in S.ing){
     const i=S.ing[id]; let m=S.mercado[id]??1;
-    m += rnd(-i.vol,i.vol);                       // caminhada aleatória
-    if(srandom()<0.06) m += rnd(-.25,.25);    // choque ocasional
+    m += rndM(-i.vol,i.vol);                       // caminhada aleatória
+    if(srMundo()<0.06) m += rndM(-.25,.25);    // choque ocasional
     m += (1-m)*0.05;                              // leve reversão à média
     S.mercado[id]=clamp(m,0.65,1.6);
   }
   // bebidas lacradas (água/refri) também têm mercado — dá pra estocar na promoção
-  NAO_PERECE.forEach(id=>{ const p=S.prod[id]; if(!p)return; let m=S.mercado[id]??1; m+=rnd(-(p.vol||.1),(p.vol||.1)); if(srandom()<0.06)m+=rnd(-.22,.22); m+=(1-m)*0.05; S.mercado[id]=clamp(m,0.7,1.5); });
+  NAO_PERECE.forEach(id=>{ const p=S.prod[id]; if(!p)return; let m=S.mercado[id]??1; m+=rndM(-(p.vol||.1),(p.vol||.1)); if(srMundo()<0.06)m+=rndM(-.22,.22); m+=(1-m)*0.05; S.mercado[id]=clamp(m,0.7,1.5); });
   // tendência do bairro
   S.tend.dias--;
-  if(S.tend.dias<=0){ const t=pick(TENDENCIAS); S.tend={id:t.id,dias:round(rnd(t.dur[0],t.dur[1]))}; }
+  if(S.tend.dias<=0){ const t=pickM(TENDENCIAS); S.tend={id:t.id,dias:round(rndM(t.dur[0],t.dur[1]))}; }
   // boost temporário (influencer/feira)
   if(S.boost){ S.boost.dias--; if(S.boost.dias<=0) S.boost=null; }
 }
@@ -959,8 +966,8 @@ function simularDiaV2(){
   let conserto=0, evento;
   const desgaste=(S.maq?.uso||0)/CFG.maqLimite;
   const chancePane=clamp((desgaste-0.85)*0.7,0,0.6);
-  if(S.dia>=3 && srandom()<chancePane){ conserto=90+S.upg.maquina*45; evento={tipo:'ruim',ico:'🔧',tit:'A máquina quebrou!',desc:`Você forçou demais sem revisar. A cafeteira parou no meio da manhã — o conserto de emergência saiu ${brl(conserto)}.`,cap:0.55,_pane:true}; }
-  else evento=sorteiaEvento();
+  evento=sorteiaEvento();                                       // MUNDO: consome o roll do evento SEMPRE (mantém clima/evento/tendência pareados entre estratégias — FASE 0.1)
+  if(S.dia>=3 && srandom()<chancePane){ conserto=90+S.upg.maquina*45; evento={tipo:'ruim',ico:'🔧',tit:'A máquina quebrou!',desc:`Você forçou demais sem revisar. A cafeteira parou no meio da manhã — o conserto de emergência saiu ${brl(conserto)}.`,cap:0.55,_pane:true}; }  // CLIENTES: pane sobrepõe o evento do dia
   const clima=CLIMAS[S.climaHoje];
   const ativos=produtosAtivos();
   const b=S.bairro||{renda:.5,sensPreco:.6,pressa:.5};
@@ -1131,7 +1138,7 @@ function simularDiaV2(){
 function sorteiaEvento(){
   const eleg=EVENTOS.filter(e=>{try{return !e.cond||e.cond(S)}catch(err){return false}});
   const t=eleg.reduce((a,e)=>a+e.p,0);
-  let r=srandom()*t;
+  let r=srMundo()*t;
   for(const e of eleg){if((r-=e.p)<=0)return e}
   return eleg[0]||EVENTOS[0];
 }
@@ -1544,7 +1551,7 @@ function irFechamento(){
   if(ev.tipo!=='neutro'){$('#fech-evento').hidden=false;$('#fech-evento-ico').textContent=ev.ico;$('#fech-evento-tit').textContent=pickTxt(ev.tit);$('#fech-evento-desc').textContent=pickTxt(ev.desc)}
   else $('#fech-evento').hidden=true;
 
-  S.climaHoje=pick(Object.keys(CLIMAS));   // sorteia o clima de amanhã, já visível na previsão da gestão
+  S.climaHoje=pickM(Object.keys(CLIMAS));   // sorteia o clima de amanhã, já visível na previsão da gestão
   fechSec('balanco');   // abre no Balanço; Movimento e Notas ficam a um toque
   salvar(); mostra('tela-fechamento');
 }
