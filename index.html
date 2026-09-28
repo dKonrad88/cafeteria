@@ -413,17 +413,24 @@ const DIAS_SEMANA=[
    pressa→paciência, sensPreco→reação a preço, gostos→o que pedem). Ranges por arquétipo,
    sorteados pela seed → dois bairros do mesmo tipo se parecem, mas nunca são iguais. */
 const BAIRRO_TIPOS={
-  residencial:  {nome:'Residencial',  emoji:'🏘️', tamanho:[34,46], renda:[.35,.60], pressa:[.25,.45], sensPreco:[.50,.70], fdsAmp:[.90,1.10], gostos:{quente:1.10,comida:1.20,refresco:.90,gelado:.85}, vizinhos:['praca','escola']},
-  comercial:    {nome:'Comercial',    emoji:'🏢', tamanho:[44,58], renda:[.50,.75], pressa:[.70,.92], sensPreco:[.40,.60], fdsAmp:[.40,.65], gostos:{quente:1.30,comida:1.00,refresco:.90,gelado:.80}, vizinhos:['predio','concorrente']},
-  universitario:{nome:'Universitário',emoji:'🎓', tamanho:[40,54], renda:[.25,.45], pressa:[.40,.60], sensPreco:[.70,.90], fdsAmp:[.80,1.00], gostos:{quente:1.00,comida:1.10,refresco:1.25,gelado:1.20}, vizinhos:['escola','praca']},
-  boemio:       {nome:'Boêmio',       emoji:'🎭', tamanho:[32,44], renda:[.45,.70], pressa:[.20,.40], sensPreco:[.45,.65], fdsAmp:[1.20,1.50], gostos:{quente:1.15,comida:1.20,refresco:1.05,gelado:1.05}, vizinhos:['praca','concorrente']},
-  turistico:    {nome:'Turístico',    emoji:'🏖️', tamanho:[38,52], renda:[.55,.85], pressa:[.30,.50], sensPreco:[.30,.50], fdsAmp:[1.20,1.50], gostos:{quente:1.00,comida:1.10,refresco:1.30,gelado:1.35}, vizinhos:['praca','concorrente']},
+  residencial:  {nome:'Residencial',  emoji:'🏘️', tamanho:[33,43], renda:[.35,.60], pressa:[.25,.45], sensPreco:[.50,.70], fdsAmp:[.95,1.15], gostos:{quente:1.10,comida:1.25,refresco:.90,gelado:.85}, vizinhos:['praca','escola']},
+  comercial:    {nome:'Comercial',    emoji:'🏢', tamanho:[52,66], renda:[.50,.75], pressa:[.72,.92], sensPreco:[.40,.60], fdsAmp:[.35,.55], gostos:{quente:1.35,comida:1.00,refresco:.90,gelado:.80}, vizinhos:['predio','concorrente']},
+  universitario:{nome:'Universitário',emoji:'🎓', tamanho:[44,56], renda:[.22,.42], pressa:[.40,.60], sensPreco:[.72,.92], fdsAmp:[.45,.65], gostos:{quente:1.00,comida:1.10,refresco:1.30,gelado:1.25}, vizinhos:['universidade','praca']},
+  boemio:       {nome:'Boêmio',       emoji:'🎭', tamanho:[28,38], renda:[.45,.70], pressa:[.18,.38], sensPreco:[.45,.65], fdsAmp:[1.30,1.60], gostos:{quente:1.15,comida:1.20,refresco:1.05,gelado:1.05}, vizinhos:['praca','concorrente']},
+  turistico:    {nome:'Turístico',    emoji:'🏖️', tamanho:[40,54], renda:[.55,.85], pressa:[.30,.50], sensPreco:[.30,.50], fdsAmp:[1.25,1.55], gostos:{quente:1.00,comida:1.10,refresco:1.30,gelado:1.35}, vizinhos:['orla','concorrente']},
 };
-const BAIRRO_NOMES={pre:['Vila','Jardim','Alto','Bairro','Recanto','Morro','Largo'],nome:['Aurora','Belmonte','Boa Vista','Glória','Providência','Formosa','Serena','Mirante','Palmeiras','Rosário','Cascata','Alvorada','Esperança','Concórdia','Bonança','Aliança']};
-function gerarNomeBairro(){ return pick(BAIRRO_NOMES.pre)+' '+pick(BAIRRO_NOMES.nome); }
+/* nomes coerentes com o tipo do bairro */
+const BAIRRO_NOMES={
+  residencial:['Vila das Flores','Jardim Serena','Vila Aurora','Recanto Formosa','Jardim das Acácias','Alto da Boa Vista','Vila Mariana','Bairro Tranquilo'],
+  comercial:['Centro','Distrito Comercial','Largo do Comércio','Praça do Mercado','Baixa','Centro Velho','Largo da Sé'],
+  universitario:['Cidade Universitária','Vila Acadêmica','Bairro Latino','Vila dos Estudantes','Campus','Vila do Saber'],
+  boemio:['Vila Boêmia','Bairro das Artes','Beco das Garrafas','Vila da Boemia','Largo dos Poetas','Vila Serelepe'],
+  turistico:['Orla','Beira-Mar','Vila do Porto','Praia Serena','Costa Dourada','Centro Histórico','Enseada'],
+};
+function gerarNomeBairro(tipo){ return pick(BAIRRO_NOMES[tipo]||BAIRRO_NOMES.residencial); }
 function gerarBairro(){
   const tipo=pick(Object.keys(BAIRRO_TIPOS)), t=BAIRRO_TIPOS[tipo], r=a=>rnd(a[0],a[1]);
-  return { tipo, tipoNome:t.nome, emoji:t.emoji, nome:gerarNomeBairro(),
+  return { tipo, tipoNome:t.nome, emoji:t.emoji, nome:gerarNomeBairro(tipo),
     tamanho:Math.round(r(t.tamanho)),
     renda:+r(t.renda).toFixed(2), pressa:+r(t.pressa).toFixed(2), sensPreco:+r(t.sensPreco).toFixed(2), fdsAmp:+r(t.fdsAmp).toFixed(2),
     gostos:Object.assign({},t.gostos), vizinhos:t.vizinhos.slice() };
@@ -1567,7 +1574,9 @@ function poisBairro(){
   const defs={
     praca:{emo:'🌳',nome:'Praça',ativo:forte,ef:forte?'bomba no fim de semana':'tranquila nos dias de semana'},
     escola:{emo:'🎓',nome:'Escola',ativo:t.id==='estudante',ef:t.id==='estudante'?'estudantes em peso hoje':'movimento de estudante fraco'},
+    universidade:{emo:'🏛️',nome:'Universidade',ativo:true,ef:'estudantes o dia todo · esvazia no fim de semana'},
     predio:{emo:'🏢',nome:'Prédio comercial',ativo:predio,ef:predio?'traz café rápido de manhã':'escritórios ainda tímidos'},
+    orla:{emo:'🏖️',nome:'Orla',ativo:forte,ef:forte?'lotada no fim de semana':'movimento de turista fraco hoje'},
     concorrente:{emo:'☕',nome:'Concorrente',rival:true,ef:'de olho no seu preço'},
   };
   const viz=(S.bairro&&S.bairro.vizinhos)||['praca','escola'], pos=['left','right','top','bottom'];
