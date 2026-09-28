@@ -440,6 +440,24 @@ function gerarBairro(){
 function baseCidade(){ return (S.bairro&&S.bairro.tamanho)||CFG.baseCidade; }
 function gostoBairro(p){ return (S.bairro&&S.bairro.gostos[p.cat])||1; }
 function fatorDiaSemana(){ const d=DIAS_SEMANA[S.diaSemana%7].dem; return S.bairro? 1+(d-1)*S.bairro.fdsAmp : d; }   // o ritmo da semana depende do caráter do bairro
+/* ===================== CONCORRENTE VIVO (Etapa 3) =====================
+   Uma cafeteria rival com PERSONALIDADE (sorteada pela seed). Ela entra na decisão do cliente
+   (compara preço, fama e distância com a sua), REAGE às suas jogadas com ATRASO de dias (nunca
+   instantâneo) e com PISO de preço (sem guerra até zero), e pode CRESCER ou FECHAR conforme se sai. */
+const CONCORRENTE_TIPOS={
+  agressivo:  {nome:'Agressivo',  emoji:'😤', desc:'corta preço e faz promoção quando perde cliente', preco:[.85,.95], fama:[2.2,3.0], reageEm:[2,3], corte:.08, piso:.72, promoChance:.40},
+  acomodado:  {nome:'Acomodado',  emoji:'😌', desc:'lento pra reagir, quase não mexe no preço',        preco:[.98,1.08],fama:[2.0,2.8], reageEm:[6,9], corte:.03, piso:.88, promoChance:.08},
+  premium:    {nome:'Premium',    emoji:'💎', desc:'caro e famoso — compete por status, não por preço', preco:[1.15,1.35],fama:[3.0,4.0],reageEm:[5,8], corte:.02, piso:1.05,promoChance:.10},
+  oportunista:{nome:'Oportunista',emoji:'🦊', desc:'copia suas jogadas e aproveita brechas',            preco:[.90,1.05],fama:[2.2,3.2], reageEm:[3,5], corte:.06, piso:.78, promoChance:.25},
+};
+function gerarConcorrente(){
+  const tipo=pick(Object.keys(CONCORRENTE_TIPOS)), t=CONCORRENTE_TIPOS[tipo], r=a=>rnd(a[0],a[1]);
+  return { tipo, nome:t.nome, emoji:t.emoji, desc:t.desc,
+    nivelPreco:+r(t.preco).toFixed(2), fama:+r(t.fama).toFixed(2),
+    distancia:+rnd(.12,.30).toFixed(2),   // conveniência: fração que prefere ir nele por ser perto
+    forca:1, promoDias:0, cooldown:round(rnd(t.reageEm[0],t.reageEm[1])), pressao:0, fechado:false };
+}
+function concorrentePreco(p){ const c=S.concorrente; return justoEff(p)*c.nivelPreco*(c.promoDias>0?0.85:1); }   // preço do rival pro mesmo produto
 /* Ingredientes (matéria-prima). preco = base * mercado (oscila). vol = volatilidade */
 function ingredientesBase(){return{
   graoComum:   {nome:'Grão comum',emoji:'🫘',base:0.90,vol:.14,qual:.45,seco:true,estoque:0,desbloq:true},
@@ -580,8 +598,9 @@ function novoJogo(){
   const seed=(PREFS.seedFixa!=null?PREFS.seedFixa:novaSeed())>>>0;   // seed fixa (debug) ou aleatória
   setSeed(seed);
   const bairro=gerarBairro();
+  const concorrente=gerarConcorrente();
   return{
-    dia:1, caixa:CFG.caixaInicial, seed, rngState:seed, bairro,
+    dia:1, caixa:CFG.caixaInicial, seed, rngState:seed, bairro, concorrente,
     rep:{custo:64,ambiente:54,atendimento:58,qualidade:52,variedade:45},
     ing:ingredientesBase(), prod:produtosBase(),
     graoAtivo:'graoComum',
@@ -604,6 +623,7 @@ function sanear(s){ if(!s.clube||!Array.isArray(s.clube.planos)) s.clube={planos
   if(!Array.isArray(s.combosSalvos)) s.combosSalvos=[];
   if(!s.bairro||!s.bairro.tamanho) s.bairro=gerarBairro();   // save antigo ganha um bairro (retrofit)
   if(s.boca==null)s.boca=1; if(s.regulares==null)s.regulares=0;   // memória/boca a boca (motor individual)
+  if(!s.concorrente||!s.concorrente.tipo) s.concorrente=gerarConcorrente();   // save antigo ganha um concorrente
   return s; }
 function apagarSave(){try{localStorage.removeItem(SAVE_KEY)}catch(e){}}
 /* preferências (persistem separadas do save — não somem ao recomeçar) */
@@ -991,7 +1011,8 @@ function simularDiaV2(){
   // ---- AGENTES: cada walk-in AVALIA o cardápio e ESCOLHE (escolha ponderada, com substituto e fatores que se compensam) ----
   const nAv=Math.round(demanda*(1-fracCombo)*fracAtend);
   const filaP0=demandaTotal>0?perdidosFila/demandaTotal:0;
-  let satSoma=0, satN=0, comprouN=0; const contagem={comprou:0,trocou:0,caro:0,esgotou:0}; const amostra=[];
+  let satSoma=0, satN=0, comprouN=0, foramConcorrente=0; const contagem={comprou:0,trocou:0,caro:0,esgotou:0}; const motivosConc={barato:0,famoso:0,perto:0}; const amostra=[], amostraConc=[];
+  const conc=S.concorrente;
   for(let i=0;i<nAv;i++){
     // perfil (nasce do bairro): bolso, sensibilidade a preço, humor (música+clima), horário
     const orc=clamp((b.renda??.5)+rnd(-.28,.28),0.05,1.25);
@@ -1006,6 +1027,14 @@ function simularDiaV2(){
     let craving=ativos[0],wc=-1,best=null,vbest=-1,okBest=0;
     ativos.forEach(p=>{ const w=want(p); if(w>wc){wc=w;craving=p;}
       if(prepDisp[p._id]>=1){ const razao=p.preco/Math.max(0.1,justoEff(p)*W), ok=clamp(1-sens*clamp(razao-1,0,2.5),0,1), q=(p.receita&&p.receita.grao)?qualF:1, val=w*ok*q; if(val>vbest){vbest=val;best=p;okBest=ok;} } });
+    // CONCORRENTE entra na decisão: o cliente compara preço/fama/distância com a sua loja
+    if(conc && !conc.fechado){
+      const concP=concorrentePreco(craving), seuP=(best||craving).preco;
+      const vantPreco=clamp(seuP/Math.max(0.1,concP)-1,-0.6,1.2)*sens;   // rival mais barato × o quanto ele liga pra preço
+      const vantFama=clamp(conc.fama/Math.max(0.1,repGeral())-1,-0.5,1)*0.35;
+      const pull=clamp((conc.distancia+vantPreco*0.5+vantFama)*conc.forca+rnd(-.04,.04),0,0.85);
+      if(srandom()<pull){ foramConcorrente++; const mot=(vantPreco>=vantFama&&vantPreco>=conc.distancia)?'barato':(vantFama>=conc.distancia?'famoso':'perto'); motivosConc[mot]++; if(amostraConc.length<20)amostraConc.push({queria:craving.nome,motivo:mot}); continue; }
+    }
     let motivo,prod=best,comprou=false,fatores='';
     if(!best){ motivo='esgotou'; totalFaltou++; M[craving._id].faltou++; fatores='nada em estoque'; }
     else {
@@ -1025,6 +1054,24 @@ function simularDiaV2(){
     }
     contagem[motivo]=(contagem[motivo]||0)+1;
     if(amostra.length<80) amostra.push({orcamento:+orc.toFixed(2),sensPreco:+sens.toFixed(2),humor:+humor.toFixed(2),horario:manha?'manhã':'tarde',queria:craving.nome,levou:comprou?prod.nome:null,motivo,fatores:fatores||'—'});
+  }
+  // ---- CONCORRENTE reage (com ATRASO) e cresce/fecha conforme o desempenho ----
+  if(conc && !conc.fechado){
+    const capFrac = (nAv+foramConcorrente)>0 ? foramConcorrente/(nAv+foramConcorrente) : 0;   // fração que ele capturou
+    conc.forca = clamp(conc.forca + (capFrac-0.18)*0.05, 0.15, 2);          // captura muito → cresce; pouco → encolhe
+    const vantVc = clamp((repGeral()-conc.fama)/2.5 + (conc.nivelPreco-1)*0.5, -0.6, 1);        // >0 = VOCÊ domina → pressão nele
+    conc.pressao = clamp(conc.pressao + vantVc*0.35, 0, 3);
+    conc.cooldown = Math.max(0, conc.cooldown-1); conc._reagiu=null;
+    if(conc.cooldown<=0 && conc.pressao>=1){                                 // reage — mas só quando o atraso passa
+      const t=CONCORRENTE_TIPOS[conc.tipo];
+      if(conc.tipo==='premium'){ conc.fama=clamp(conc.fama+0.12,1.5,4.6); conc._reagiu='reforçou a fama'; }
+      else { const antes=conc.nivelPreco; conc.nivelPreco=clamp(conc.nivelPreco-t.corte,t.piso,1.5);
+        if(srandom()<t.promoChance){ conc.promoDias=round(rnd(2,4)); conc._reagiu='lançou promoção'; }
+        else conc._reagiu = conc.nivelPreco<antes-0.001 ? 'baixou o preço' : 'segurou (chegou no piso)'; }
+      conc.cooldown=round(rnd(t.reageEm[0],t.reageEm[1])); conc.pressao=0;
+    }
+    if(conc.promoDias>0) conc.promoDias--;
+    if(conc.forca<=0.2 && conc.fama<repGeral()-1){ conc.fechado=true; conc._fechou=true; }   // você dominou → ele fecha
   }
   // ---- clube (café do plano, não paga) + casadinho (paga) por produto, no estoque que sobrou ----
   ativos.forEach(p=>{
@@ -1073,10 +1120,11 @@ function simularDiaV2(){
   const salarios=S.upg.baristas*CFG.salarioBarista+(S.freelaHoje||0)*CFG.salarioFreela;
   const fixo=CFG.fixoBase+S.upg.mesas*CFG.custoMesaDia+(S.custoFornecedor||0)+(S.contratoFornecedor?S.contratoFornecedor.custoDia:0)+(S.upg.ar?10:0);
   const lucro=receita+clube.receita+receitaDeliv+gorjeta+filiais.lucro-custoIng-custoRevenda-perdaSobra-salarios-fixo-conserto;
-  ultimoDebugV2={contagem, amostra, nWalk:Math.round(nWalk), regulares, boca:+(S.boca).toFixed(2), satDia:+satDiaAg.toFixed(2), perdidosPreco, perdidosFila:round(perdidosFila)};
+  ultimoDebugV2={contagem, amostra, nWalk:Math.round(nWalk), regulares, boca:+(S.boca).toFixed(2), satDia:+satDiaAg.toFixed(2), perdidosPreco, perdidosFila:round(perdidosFila),
+    foramConcorrente, motivosConc, amostraConc, concReagiu:conc?conc._reagiu:null, concFechou:conc?!!conc._fechou:false, concNivel:conc?conc.nivelPreco:null, concFama:conc?conc.fama:null, concPromo:conc?conc.promoDias:0};
   return {evento,receita,receitaClube:clube.receita,clubeNovos:clube.novos,clubeNovosPlanos:clube.novosPorPlano,clubeRenov:clube.renovados,clubeCancel:clube.cancelados,receitaDeliv,gorjeta,conserto,custoIng,custoRevenda,perdaSobra,salarios,fixo,lucro,
     filiaisLucro:filiais.lucro,filiaisBruto:filiais.bruto,filiaisCusto:filiais.custo,filiaisDet:filiais.det,
-    itensVendidos,vendasPagas,ticketMedio,semComprar,perdidosFila:round(perdidosFila),faltou:round(totalFaltou),perdidosPreco:round(perdidosPreco),
+    itensVendidos,vendasPagas,ticketMedio,semComprar,perdidosFila:round(perdidosFila),faltou:round(totalFaltou),perdidosPreco:round(perdidosPreco),foramConcorrente,
     assinAtend:round(assinAtend),casadaVend:round(casadaVend),rNovo,dRep,porItem,demandaTotal:round(demandaTotal),cap:round(cap),
     combosVend,receitaCombo,combosRes,usoMaquina,desgaste,filaP,faltaP,fPrecoMedio,alvo,_debug:ultimoDebugV2};
 }
@@ -1447,18 +1495,20 @@ function irFechamento(){
 
   // ---- FUNIL DO DIA: conta a história de quantos vieram e onde a gente se perdeu (sempre visível) ----
   const fila=$('#fech-fila'); fila.hidden=false; fila.style.borderColor='var(--line2)';
-  const apareceram=r.demandaTotal, fil=r.perdidosFila, flt=r.faltou, prc=r.perdidosPreco||0;
-  const chegaram=Math.max(0,apareceram-fil), levaram=Math.max(0,chegaram-flt-prc);
+  const apareceram=r.demandaTotal, fil=r.perdidosFila, flt=r.faltou, prc=r.perdidosPreco||0, cnc=r.foramConcorrente||0;
+  const chegaram=Math.max(0,apareceram-fil), levaram=Math.max(0,chegaram-cnc-flt-prc);
   const step=(emo,lbl,num,cor)=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 0"><span style="font-size:18px">${emo}</span><span style="flex:1;font-weight:800;font-size:13.5px">${lbl}</span><span style="font-weight:900;font-size:19px;color:${cor};font-family:var(--font-disp)">${num}</span></div>`;
   const leak=(emo,num,txt,motivo)=>`<div style="padding:1px 0 4px 30px"><div style="display:flex;align-items:baseline;gap:6px;color:var(--bad)"><span style="font-size:12px">↘</span><span style="font-size:12.5px;font-weight:800">${emo} ${num} ${txt}</span></div><div style="font-size:11px;color:var(--ink-dim);padding-left:19px;line-height:1.35">${motivo}</div></div>`;
   let corpo=step('👥','Apareceram na porta',apareceram,'var(--ink)');
   if(fil>0) corpo+=leak('🚶',fil,'desistiram da fila',`sua capacidade era ~${r.cap}/dia — barista/mesas/freela deixam entrar mais`);
   corpo+=step('🚪','Chegaram ao balcão',chegaram,'var(--gold)');
+  if(cnc>0) corpo+=leak('🏃',cnc,'foram ao concorrente',`${S.concorrente?S.concorrente.nome.toLowerCase():'o rival'} ganhou no preço, na fama ou por ser mais perto`);
   if(prc>0) corpo+=leak('💸',prc,'acharam caro e desistiram','o preço passou do que essa gente topa pagar — bairro sensível');
   if(flt>0) corpo+=leak('😕',flt,'não acharam o produto','o que queriam esgotou — precisava ter preparado mais');
   corpo+=step('✅','Levaram algo pra casa',levaram,'var(--good)');
-  let dica; const maior=Math.max(fil,flt,prc);
-  if(fil<=2&&flt<=2&&prc<=2) dica='👍 Dia redondo — quase todo mundo foi atendido.';
+  let dica; const maior=Math.max(fil,flt,prc,cnc);
+  if(fil<=2&&flt<=2&&prc<=2&&cnc<=2) dica='👍 Dia redondo — quase todo mundo foi atendido.';
+  else if(maior===cnc&&cnc>2) dica='💡 Hoje o CONCORRENTE puxou clientes. Veja como ele está (aba Rede) — preço, fama ou conveniência.';
   else if(maior===prc&&prc>2) dica='💡 Hoje o gargalo foi o PREÇO: muita gente achou caro. Esse bairro é sensível — teste um preço mais baixo.';
   else if(maior===fil) dica='💡 Hoje o gargalo foi a FILA (capacidade): mais barista, mesas ou um freela deixam mais gente entrar.';
   else if(maior===flt) dica='💡 Hoje o gargalo foi o ESTOQUE: prepare mais dos itens que esgotaram (veja os "faltou" acima).';
@@ -1484,8 +1534,11 @@ function irFechamento(){
     secCli.innerHTML=`<div style="font-family:var(--font-disp);font-weight:600;font-size:16px">Por que compraram (ou não)</div>
       <div style="margin:8px 0">${linha('✅','Levaram o que queriam',c.comprou,'var(--good)')}${linha('🔄','Trocaram de produto',c.trocou,'var(--gold)')}${linha('💸','Acharam caro',c.caro,'var(--bad)')}${linha('😕','Item esgotado',c.esgotou,'var(--bad)')}</div>
       <div style="display:flex;flex-direction:column;gap:6px">${div.map(cliCard).join('')}</div>
-      <div style="font-size:11px;color:var(--ink-dim);margin-top:9px;line-height:1.4">🗣️ Boca a boca: <b>${Math.round(d.boca*100)}%</b> · 🔁 Fregueses fiéis: <b>${Math.round(d.regulares)}</b>. Cliente feliz volta e traz gente; preço alto e fila afastam.</div>`;
+      ${d.foramConcorrente>0?`<div style="margin-top:9px;padding:8px 10px;background:var(--surface2);border-left:3px solid var(--bad);border-radius:9px"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:12.5px"><span>🏃 Foram ao concorrente</span><b style="color:var(--bad)">${d.foramConcorrente}</b></div><div style="font-size:11px;color:var(--ink-soft);margin-top:2px">${['barato','famoso','perto'].filter(k=>d.motivosConc[k]>0).map(k=>`${d.motivosConc[k]}× ${k==='barato'?'mais barato lá':k==='famoso'?'ele é mais famoso':'ele é mais perto'}`).join(' · ')||'—'}</div></div>`:''}
+      ${d.concReagiu?`<div class="tiny" style="color:var(--gold);font-weight:700;margin-top:6px">⚔️ O concorrente ${d.concReagiu} hoje.</div>`:''}
+      <div style="font-size:11px;color:var(--ink-dim);margin-top:9px;line-height:1.4">🗣️ Boca a boca: <b>${Math.round(d.boca*100)}%</b> · 🔁 Fregueses fiéis: <b>${Math.round(d.regulares)}</b>. Cliente feliz volta e traz gente; preço, fila e o concorrente afastam.</div>`;
   } else if(btnCli){ btnCli.hidden=true; }
+  if(r._debug&&r._debug.concFechou) setTimeout(()=>flutua('🎉 O concorrente fechou as portas!'),800);
 
   const ev=r.evento;
   if(ev.tipo!=='neutro'){$('#fech-evento').hidden=false;$('#fech-evento-ico').textContent=ev.ico;$('#fech-evento-tit').textContent=pickTxt(ev.tit);$('#fech-evento-desc').textContent=pickTxt(ev.desc)}
@@ -1755,7 +1808,7 @@ function poisBairro(){
     universidade:{emo:'🏛️',nome:'Universidade',ativo:true,ef:'estudantes o dia todo · esvazia no fim de semana'},
     predio:{emo:'🏢',nome:'Prédio comercial',ativo:predio,ef:predio?'traz café rápido de manhã':'escritórios ainda tímidos'},
     orla:{emo:'🏖️',nome:'Orla',ativo:forte,ef:forte?'lotada no fim de semana':'movimento de turista fraco hoje'},
-    concorrente:{emo:'☕',nome:'Concorrente',rival:true,ef:'de olho no seu preço'},
+    concorrente:{emo:S.concorrente&&S.concorrente.fechado?'🚪':'☕',nome:'Concorrente',rival:true,ef:S.concorrente?(S.concorrente.fechado?'fechou as portas':S.concorrente.emoji+' '+S.concorrente.nome):'de olho no seu preço'},
   };
   const viz=(S.bairro&&S.bairro.vizinhos)||['praca','escola'], pos=['left','right','top','bottom'];
   return viz.map((id,i)=>Object.assign({pos:pos[i]||'bottom'},defs[id]||{emo:'📍',nome:id,ef:''})).filter(p=>p.nome);
@@ -1778,6 +1831,26 @@ function renderMapaBairro(box){
   wrap.innerHTML=head+grid+`<div class="tiny muted" style="text-align:center;margin-top:8px">Toque num ponto pra ver o efeito.</div>`;
   box.appendChild(wrap);
   wrap.querySelectorAll('.mapa-poi').forEach(el=>el.addEventListener('click',()=>flutua(el.dataset.ef)));
+  // ---- concorrente vivo (Etapa 3) ----
+  const cc=S.concorrente;
+  if(cc){
+    const card=document.createElement('div');card.className='card';card.style.cssText='border-color:var(--bad-soft)';
+    if(cc.fechado){
+      card.innerHTML=`<div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">🚪</div><div><div style="font-weight:800;font-size:14px">Concorrente fechou! 🎉</div><div class="tiny muted">Você dominou o bairro — sem rival por enquanto.</div></div></div>`;
+    } else {
+      const dif=cc.nivelPreco, precoTxt=dif<0.95?`${Math.round((1-dif)*100)}% mais barato que você`:dif>1.05?`${Math.round((dif-1)*100)}% mais caro (premium)`:'preço parecido com o seu';
+      const famaTxt=cc.fama>repGeral()+0.3?'mais famoso que você':cc.fama<repGeral()-0.3?'menos famoso que você':'fama parecida';
+      const forcaPct=Math.round(clamp(cc.forca/1.6,0,1)*100);
+      card.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:22px">${cc.emoji}</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px">Concorrente · ${cc.nome}${cc.promoDias>0?' <span class="selo" style="background:rgba(217,106,74,.2);color:var(--bad)">em promoção</span>':''}</div>
+          <div class="tiny muted">${cc.desc}</div>
+          <div class="tiny" style="margin-top:3px">💰 ${precoTxt} · ⭐ ${famaTxt}</div>
+          <div class="rep-track" style="margin-top:5px"><div class="fill" style="width:${forcaPct}%;background:var(--bad)"></div></div>
+          <div class="tiny dim" style="margin-top:2px">força do rival: ${forcaPct}% — cai quando você domina, sobe quando ele rouba cliente</div></div></div>`;
+    }
+    box.appendChild(card);
+  }
   if((S.filiais||[]).length){
     const lbl=document.createElement('div');lbl.className='tiny muted';lbl.style.cssText='text-align:center;margin:2px';lbl.textContent='Outros bairros da sua rede:';box.appendChild(lbl);
     const strip=document.createElement('div');strip.style.cssText='display:flex;gap:8px;flex-wrap:wrap;justify-content:center';
