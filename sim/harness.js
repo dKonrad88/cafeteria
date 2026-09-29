@@ -94,6 +94,7 @@ const BASKET=['baristas','mesas','treino','baristas'];   // FASE 3: maquina FORA
 function allUpg(id){for(const c in UPGRADES){const u=UPGRADES[c].find(x=>x.id===id);if(u)return u;}return null;}
 function cardapioPlan(){const g=S.bairro.gostos,list=['paodequeijo','cookie'];list.push(((g.refresco||1)>=1.1||(g.gelado||1)>=1.1)?'suco':'croissant');return list;}
 function applyGestao(cfg){let cardapio=0,cesta=0;
+  if(window.ECON45 && window.ECON45.buffer && S.caixa < window.ECON45.buffer) return {cardapio:0,cesta:0};   // FASE 4.5: jogador ciente do aluguel — nao gasta abaixo do buffer de ~1 mes de recorrente
   if(cfg.cons && (S.caixa<(window.CONS_RES||700) || S.emprestimo)) return {cardapio:0,cesta:0};   // CONSERVADORA: trava TODO capex quando caixa<reserva OU emprestimo ativo (para de comprar ate quitar)
   if(window.TF_BUYEARLY){ // DIAGNOSTICO (a): compra a especialidade a vista, no topo (antes do ambiente drenar o caixa)
     if(cfg.maquina){const u=allUpg('maquina');if(u&&S.upg.maquina<1&&S.caixa>=u.custos[0]){const c=S.caixa;comprarUpgrade(u);cesta+=(c-S.caixa);}}
@@ -125,6 +126,7 @@ function runGame(strat, seed, days, opts){
   S=novoJogo(); if(bairroType)S.bairro=forcedBairro(bairroType,seed); if(opts.bairro)S.bairro=JSON.parse(JSON.stringify(opts.bairro)); if(opts.concType)S.concorrente=forcedConc(opts.concType,seed);
   if(opts.probe){if(opts.probe.graoBase!=null)S.ing.graoComum.base=opts.probe.graoBase; if(opts.probe.coadoPop!=null)S.prod.cafe.pop=opts.probe.coadoPop; if(opts.probe.noConc)S.concorrente=null;}
   S._bi=0; const _concTipo=S.concorrente?S.concorrente.tipo:null;
+  if(window.ECON45){ const E=window.ECON45; S.caixa=(E.capital!=null?E.capital:5000)-(E.montagem!=null?E.montagem:780); S._lightVol=0; S._bills=[]; }   // FASE 4.5: capital - montagem (substitui caixa 300 + loja gratis)
   const perDay=[]; let bankrupt=false,bankruptDay=null,diasNeg=0,panes=0,wentRed=false,minCaixa=S.caixa,lastAlvo=null; const mix={};
   for(let d=0;d<days;d++){
     irManha();
@@ -143,6 +145,11 @@ function runGame(strat, seed, days, opts){
     fitPrep(); const preparado=produtosAtivos().reduce((s,p)=>s+p.prep,0);
     simResultado=null; abrirDia(redMode);
     const r=simResultado; if(!r)break;
+    if(window.ECON45){ const E=window.ECON45; S.caixa+=r.fixo; S._lightVol=(S._lightVol||0)+r.itensVendidos;   // FASE 4.5: desfaz o fixo DIARIO; cobra recorrentes MENSAIS no vencimento
+      const dm=((S.dia-1)%30)+1;
+      if(dm===(E.dueDay||10)){ const rent=(E.rent&&E.rent[S.bairro.tipo])||E.rentDefault||800;
+        const light=(E.lightBase||150)+(S.upg.maquina||0)*(E.lightMaq||200)+(S.upg.geladeira||0)*(E.lightGel||250)+(S.upg.ar||0)*(E.lightAr||300)+(S._lightVol||0)*(E.lightVol||0.3);
+        S.caixa-=rent+light; S._lightVol=0; S._bills.push({dia:S.dia,bill:Math.round(rent+light),caixaApos:Math.round(S.caixa)}); } }
     if(r.alvo)lastAlvo=r.alvo;
     const g=applyGestao(cfg);
     if(r.evento&&r.evento._pane)panes++;

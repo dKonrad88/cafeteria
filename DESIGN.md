@@ -173,4 +173,26 @@ Com o rival proporcional (Teto3), o overpricer (base ×1,35, comercial, 120d) **
 ### FASE 4 — dificuldade relativa (certa, 60d, pós-#2): NÃO homogeneizou
 boêmio 20.789/5,6%/gate78 · residencial 19.706/4%/91 · turístico 18.333/2,8%/**21** · comercial 16.460/0,8%/87 · universitário 13.022/4%/96. Variedade preservada (boêmio boom-or-bust; comercial seguro-mas-espremido pelo rival forte; universitário o pobre; turístico gate-travado). Diego prefere um bairro difícil a cinco iguais — mantido.
 
-**Pendente:** decisão do Diego sobre o gate do turístico; FASE 5 (vida própria) e 6 (régua de preço/UI/PWA).
+**DECISÕES CONSCIENTES (não são pendências):**
+- **Gate do turístico fica como está** (só ~21% alcança rep 3,6). Ficção coerente: o point turístico fatura mas não constrói fama pra franquear — é identidade do bairro, não bug. Não abrir essa frente.
+- **Boêmio ~neutro na filial fica em 20%** (simetria "20% em todo lugar"); neutro já é decisão.
+
+### FASE 4.5 — Economia realista (abertura de negócio): PROJETO + MEDIÇÃO (nada no index.html)
+Direção: o jogo passa a começar com a **decisão de abrir** (capital − montagem no dia 1) em vez de caixa 300 + loja grátis; recorrentes com **periodicidade real** (aluguel + luz MENSAIS com vencimento) substituindo o `custoFixo` diário achatado. Medido só no harness (overlay `window.ECON45`, flag-gated). **index.html intacto.**
+
+**Economia atual (a substituir):** `fixoBase` 38/dia (aluguel+luz+misc achatado) + mesas×3 + ar×10 + máquina×15 + geladeira×14 + clube×1/assin + carta-aluguel; salários 60/dia (barista); insumos por unidade (diário); empréstimo juros 25%, parcela total/40 (diário); caixa 300 + café coado grátis.
+
+**Desenho:** capital ~6.500; escolher 1 de 3 pontos (substitui sorteio de bairro); montagem = equipamento (especialidade explícita) + estoque; aluguel MENSAL por bairro (boê 600·univ 700·res 800·tur 1.000·com 1.200) com vencimento escolhido; luz MENSAL = 150 + máq×200 + gel×250 + ar×300 + volume×0,3; financiamento com parcela mensal; `diaDoMes=((dia-1)%30)+1`. Regra: o fixo diário é eliminado, vira mensal — nada somado por cima.
+
+**Medição (5 pontos):**
+1. Falência (capital 5.000, bot ciente do aluguel/buffer): boê **0,4%** · univ 3,6% · res 4,4% · tur 16,4% · **com 23,2%** (ricos = aluguel alto = difíceis).
+2. **E4 5/5 holds** (aluguel flat preserva a comparação relativa; residencial confirmado maq 27.390>base, gel 7.586 cat, tudo<maq).
+3. Errada catastrófica / tudo<melhor: holds.
+4. Variedade: mantida mas **RE-ORDENADA pelo aluguel** — boêmio virou o mais SEGURO (era o difícil), comercial o mais DIFÍCIL. Coerente (ponto caro = risco de abertura).
+5. **Vencimento cria aperto REAL no 1º mês** (dia 10: 2.550→1.398; apertoM1 6-25%), trivial depois (dia 40: 18k→17k). Calibragem do capital: 3k inviabiliza (55-92% fal), 5k aperta, 8k zera (decoração). ⚠️ **Bot guloso vs ciente muda tudo** (res 18,5→4,4%): a UI TEM de surfaçar o vencimento pro jogador reservar, senão é punitivo.
+
+**O que quebra:** falência da FASE 4/Teto3 (0,8-5,6% → 0,4-23% — re-rodar a FASE 4 inteira); grão FASE 1 (provável que segure, re-medir); gate/filial (filial fica acessível cedo com 5k — re-medir winRate); empréstimo vira mensal e interage com o vencimento.
+
+**Recomendação (ordem):** (1) MVP indivisível = capital ~6.500 + aluguel mensal por bairro **com vencimento VISÍVEL na UI** + tirar a parcela-aluguel do fixoBase (rent sozinho sem capital quebra na hora; UI não é opcional); (2) tela de abertura; (3) luz mensal; (4) financiamento; (5) salários semanais. **Re-medir o aceite após CADA passo.** Nada implementado — aguardando aval.
+
+**Pendente:** decisão do Diego sobre FASE 4.5; depois FASE 5 (vida própria) e 6.
