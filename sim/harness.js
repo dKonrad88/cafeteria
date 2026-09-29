@@ -63,8 +63,7 @@ function perProductForecast(){const ativos=produtosAtivos(),e=estimativaClientes
 function applyMorning(cfg,ctx){
   ctx=ctx||{}; let capexGrao=0; const cs=ctx.convScale||1;   // cs: B6 (previsao por conversao)
   // B4: sistemas nunca testados (atras de cfg flags; ativacao/plano/filial)
-  if(cfg.maquina && S.upg.maquina>=1){ if(S.prod.expresso)S.prod.expresso.ativo=true; if(S.prod.cappuccino)S.prod.cappuccino.ativo=true; }
-  if(cfg.gelado && S.upg.geladeira>=1 && S.prod.gelado){ S.prod.gelado.ativo=true; }
+  // FASE 4 fix #1: ativacao + custo de cardapio dos produtos de especialidade movidos p/ applyGestao (entre-dias, COM gate de caixa), igual ao jogo. A manha nao ativa/cobra nada aqui (evita engolir o caixa do preparo).
   if(cfg.clube && S.clube.planos.length===0 && (!(_DPROBE&&_DPROBE.clubCapex) || S.caixa>=2*_DPROBE.clubCapex)){ if(_DPROBE&&_DPROBE.clubCapex)S.caixa-=_DPROBE.clubCapex; S.clube.planos.push({nome:'Plano Cafe',cota:20,preco:60,bebidas:['cafe'],assinantes:0,coortes:[]}); }
   if(cfg.rede && podeExpandir() && (S.filiais||[]).length<1 && S.caixa>=custoNovaFilial()){ abrirFilial(); }
   if(cfg.grao==='especial' && S.caixa>=800){ if(!S.ing.graoEspecial.desbloq && S.caixa>=800+240){S.caixa-=240;capexGrao=240;S.ing.graoEspecial.desbloq=true;S.upg.fornGraoEsp=1;} S.graoAtivo=S.ing.graoEspecial.desbloq?'graoEspecial':'graoComum'; } else S.graoAtivo='graoComum';
@@ -102,8 +101,10 @@ function applyGestao(cfg){let cardapio=0,cesta=0;
   if(cfg.ambiente){ // E5: compra os upgrades de ambiente (ar/decor/musica/wifi) + mesas ao maximo
     ['ar','musica','wifi','decor','mesas'].forEach(id=>{const u=allUpg(id);if(!u)return;while(S.upg[id]<u.max&&S.caixa>=2*u.custos[S.upg[id]]){const c=S.caixa;comprarUpgrade(u);cesta+=(c-S.caixa);}});
   }
-  if(cfg.maquina){const u=allUpg('maquina');if(u&&S.upg.maquina<1&&S.caixa>=2*u.custos[0]){const c=S.caixa;comprarUpgrade(u);cesta+=(c-S.caixa);}}
-  if(cfg.gelado){const u=allUpg('geladeira');if(u&&S.upg.geladeira<1&&S.caixa>=2*u.custos[0]){const c=S.caixa;comprarUpgrade(u);cesta+=(c-S.caixa);}}
+  if(cfg.maquina){const u=allUpg('maquina');if(u&&S.upg.maquina<1&&S.caixa>=2*u.custos[0]){const c=S.caixa;comprarUpgrade(u);cesta+=(c-S.caixa);}
+    if(S.upg.maquina>=1){['expresso','cappuccino'].forEach(id=>{if(S.prod[id]&&!S.prod[id].ativo){const it=CARDAPIO_LOJA.find(c=>c.id===id);if(it&&S.caixa>=2*it.custo){S.caixa-=it.custo;cesta+=it.custo;S.prod[id].ativo=true;if(S.prod[id].prep===0)S.prod[id].prep=15;}}});}}   // FASE 4 fix #1: ativa+cobra na gestao, gate 2x (guarda buffer p/ preparo, espalha as compras) — igual aos outros upgrades
+  if(cfg.gelado){const u=allUpg('geladeira');if(u&&S.upg.geladeira<1&&S.caixa>=2*u.custos[0]){const c=S.caixa;comprarUpgrade(u);cesta+=(c-S.caixa);}
+    if(S.upg.geladeira>=1&&S.prod.gelado&&!S.prod.gelado.ativo){const it=CARDAPIO_LOJA.find(c=>c.id==='gelado');if(it&&S.caixa>=2*it.custo){S.caixa-=it.custo;cesta+=it.custo;S.prod.gelado.ativo=true;if(S.prod.gelado.prep===0)S.prod.gelado.prep=15;}}}   // FASE 4 fix #1: gate 2x
   return {cardapio,cesta};
 }
 
@@ -149,7 +150,10 @@ function runGame(strat, seed, days, opts){
       cap:capHoje,preparado,demanda:r.demandaTotal,chegaram:Math.max(0,r.demandaTotal-r.perdidosFila),fila:r.perdidosFila,conc:(r.foramConcorrente||0),preco:(r.perdidosPreco||0),esgotou:r.faltou,atendidos:r.vendasPagas,itens:r.itensVendidos,
       previsto,realizado:r.demandaTotal,caixa:S.caixa});
     if(S.caixa<0){diasNeg++;wentRed=true;} if(S.caixa<minCaixa)minCaixa=S.caixa;
-    if(S.diasVermelho>=CFG.diasVermelhoMax){bankrupt=true;bankruptDay=S.dia;break;}
+    if(S.diasVermelho>=CFG.diasVermelhoMax){   // FASE 4 fix #2: modela o emprestimo do jogo (posDia). Jogada sensata ACEITA; irFechamento paga a parcela.
+      if(!S.emprestimo){ const falta=Math.max(0,-S.caixa), valor=Math.max(600,Math.ceil((falta+900)/100)*100), total=Math.round(valor*1.25), parcela=Math.max(20,Math.round(total/40)); S.caixa+=valor; S.emprestimo={saldo:total,parcela}; S.diasVermelho=0; }
+      else { bankrupt=true;bankruptDay=S.dia;break; }
+    }
     if(S.dia>=days)break; S.dia++;S.diaSemana=(S.diaSemana+1)%7;
   }
   const sum=k=>perDay.reduce((s,x)=>s+x[k],0);

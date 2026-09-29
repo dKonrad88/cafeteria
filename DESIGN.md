@@ -108,4 +108,18 @@ só a dupla **máquina/gelado** tem fit por bairro. Estrutura final adotada (ace
 
 **Dívidas p/ FASE 4:** (1) **falência no bem-jogado**: boêmio 14,6% e residencial ~7% vs ~0–2,6% nos demais; (2) **overpricing em bairro rico ainda lucra** (baixo-volume se auto-blinda).
 
-**Pendente:** FASE 4-6.
+### FASE 4 — PASSO 0: auditoria do harness (feita)
+Procurada a 4ª contaminação de propósito. Achada + corrigida, e duas limitações registradas.
+- **4ª contaminação (CORRIGIDA): produtos de especialidade ativados de graça.** `applyMorning` fazia `.ativo=true` em espresso/cappuccino/gelado **sem** cobrar o cardápio; o jogo cobra 150/220/200 (`renderCardapio`). Fix: ativação+cobrança movidas p/ `applyGestao` (entre-dias, **gate 2×** p/ guardar buffer de preparo — cobrar de manhã causava espiral: caixa→0→preparo 0→venda 0). Só no harness; `index.html` intacto.
+- **#2 empréstimo (CORRIGIDO): modelado igual ao jogo** (`posDia`): 3 dias no vermelho → aceita (caixa+, dívida com parcela, zera `diasVermelho`) → falência só reincidindo endividado. Antes o harness quebrava direto. ⚠️ Mede-se agora **o jogo**, não uma variante conservadora.
+- **Remedição da FASE 3 com os dois fixes (500 seeds):** **5/5 mantido** (especialidade certa bate a base em todos; boêmio incluso). Especialidade caiu ~370-530 (custo de cardápio real), gaps aguentaram. Base idêntica. "Tudo" < melhor especialidade em 5/5.
+- **Falência com empréstimo** (antes→agora, base): res 7,4→6,6 · com 0,2→0,2 · **boê 17,8→15,8** · univ 2,4→2,4 · tur 2,6→2,6. **O empréstimo mal mexe** — adia, não salva build volátil de bairro pequeno. **A dívida 1 (falência desigual) sobrevive à mitigação do jogo**, não era artefato. Caveat: o harness continua comprando pós-empréstimo (jogador esperto travaria o capex) → recuperabilidade real talvez um pouco melhor.
+
+**Limitações conhecidas do harness (registradas, aceitas por ora):**
+- **Cartas de oportunidade OFF** (fornecedor/influencer/feira não modelados).
+- **Despensa não modelada:** o harness compra insumo no spot todo dia; o jogo deixa estocar barato adiantado. ⚠️ **Todo custo de insumo medido é um TETO, não a realidade** — o jogador tem essa alavanca de economia.
+- Clube = plano fixo (proxy); ambiente compra tudo ao máximo (proxy); harness não trava capex pós-empréstimo.
+
+**Dívidas confirmadas p/ FASE 4:** (1) falência desigual (boêmio ~15% / residencial ~6,6% vs ~0-2,6%) — sobrevive ao empréstimo; (2) overpricing em bairro rico ainda lucra (baixo-volume se auto-blinda).
+
+**Pendente:** FASE 4 PASSO 1-4 (liberado pelo Diego após o PASSO 0), FASE 5-6.
