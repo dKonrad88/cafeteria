@@ -122,4 +122,29 @@ Procurada a 4ª contaminação de propósito. Achada + corrigida, e duas limita�
 
 **Dívidas confirmadas p/ FASE 4:** (1) falência desigual (boêmio ~15% / residencial ~6,6% vs ~0-2,6%) — sobrevive ao empréstimo; (2) overpricing em bairro rico ainda lucra (baixo-volume se auto-blinda).
 
-**Pendente:** FASE 4 PASSO 1-4 (liberado pelo Diego após o PASSO 0), FASE 5-6.
+### FASE 4 — PASSO 1-4 (medido; nada aplicado no index.html sem aval)
+Sondas só no harness (`cons` flag na CONSERVADORA) ou temporárias e revertidas no index.html (`PULL_MULT`, `FILIAL_RISK`).
+
+**PASSO 1 — falência do boêmio: IDENTIDADE, não defeito.**
+- CONSERVADORA (reserva de caixa + para após empréstimo + estoca barato + preparo 0,9×) **piora** (14→22-28%) e paralisa em todo lugar (comercial 19.668→690). Poupar não ajuda.
+- Diagnóstico (build base, 500 seeds): fim de semana NÃO (fdsAmp 1,05→15,4%); renda NÃO (15,8%); **tamanho SIM (55→0,6%)**; **concorrente SIM (sem rival→4,4%)**. Boêmio é pequeno (28-38) → demanda fina → o rival empurra pro vermelho.
+- Veredito: identidade (tamanho é o caráter). Mas o jogador NÃO tem mitigação (CONSERVADORA piora). Baixar = design; opção mais barata = **concorrente proporcional ao tamanho**.
+
+**PASSO 2 — overpricing: punível só com dano colateral.**
+- Clientes vão pro RIVAL (foramRival 15→41 conforme o preço sobe), não somem. Build base ×1,35 comercial ainda LUCRA (22.807 vs 36.941 alinhado): subótimo, não erro.
+- Pull 1,5× torna erro (overpricer −1.541/61% fal) MAS o bom jogador do boêmio despenca (40.451→15.587, fal 17,5→30%); a 2× devasta todos (−57 a −99%). Pull global = canhão.
+- Veredito: "cobrar caro em bairro rico é jogada válida (subótima)" — a não ser que o pull seja proporcional ao tamanho.
+
+**PASSO 3 — filial: gate alcançável; risco a torna decisão.**
+- Gate 3,6 alcançável: res 90% · univ 97% · boê 79% · com 76% · **tur 19%** (refresco dá menos qualidade).
+- Hoje = quase obrigação (comercial +8.782, ganha 81%). Com risco (30% não vingam, maturação /35, potencial 120-420): DECISÃO — winRate tur 53% · com/univ 45% · res 42% · boê 32%, EV ~neutro a 120d.
+- Veredito: risco converte obrigação→decisão ✅. Afrouxar pra ~20% dud pra centrar positivo-no-favorável.
+
+**PASSO 4 — ambiente encarecido: não dá pra fazer limpo.**
+- Gap COM−SEM ambiente por custo: ×1 +3.750..6.392 · ×2 +2.345..3.425 · ×3 comercial +1.074 / turístico +506 / **boêmio −687**. Nenhum multiplicador único o torna escolha sem virar erro no bairro pequeno.
+
+**TEMA UNIFICADOR:** sob TODA alavanca (concorrente, custo de ambiente, filial) o **bairro pequeno tampa/quebra primeiro** — custos fixos e concorrente não escalam com o tamanho. Fix de maior alavancagem = **ajuste PROPORCIONAL AO TAMANHO** (concorrente e/ou custo fixo mais leves em bairro pequeno) — resolve a dívida 1 E o colateral das dívidas 2/4 de uma vez.
+
+**Recomendação (ordem):** (1) **filial-com-risco** (única adoção limpa; afrouxar pra ~20% dud); (2) **concorrente/custo proporcional ao tamanho** (conserta boêmio + destrava a punição do overpricing sem colateral); (3) overpricing = aceitar válido-mas-subótimo (ou dobrar no #2); (4) ambiente = deixar como está. **Nada aplicado — aguardando decisão do Diego.**
+
+**Pendente:** decisão do Diego sobre FASE 4; depois FASE 5-6.

@@ -67,6 +67,7 @@ function applyMorning(cfg,ctx){
   if(cfg.clube && S.clube.planos.length===0 && (!(_DPROBE&&_DPROBE.clubCapex) || S.caixa>=2*_DPROBE.clubCapex)){ if(_DPROBE&&_DPROBE.clubCapex)S.caixa-=_DPROBE.clubCapex; S.clube.planos.push({nome:'Plano Cafe',cota:20,preco:60,bebidas:['cafe'],assinantes:0,coortes:[]}); }
   if(cfg.rede && podeExpandir() && (S.filiais||[]).length<1 && S.caixa>=custoNovaFilial()){ abrirFilial(); }
   if(cfg.grao==='especial' && S.caixa>=800){ if(!S.ing.graoEspecial.desbloq && S.caixa>=800+240){S.caixa-=240;capexGrao=240;S.ing.graoEspecial.desbloq=true;S.upg.fornGraoEsp=1;} S.graoAtivo=S.ing.graoEspecial.desbloq?'graoEspecial':'graoComum'; } else S.graoAtivo='graoComum';
+  if(cfg.cons){ const g=S.graoAtivo, m=S.mercado[g]??1; if(m<0.92 && S.caixa>(window.CONS_RES||700)+300){ const buy=100; S.caixa-=buy*precoIng(g); S.ing[g].estoque=(S.ing[g].estoque||0)+buy; } }   // CONSERVADORA: estoca grao barato quando o mercado esta em baixa (guardando a reserva)
   const mult=(cfg.price==='aligned')?alignedMult():(cfg.price==='oracle-bairro')?(ORACLE_PRICE[S.bairro.tipo]||1.05):cfg.price;
   produtosAtivos().forEach(p=>{p.preco=Math.min(p.max,Math.max(p.min,round2(justoEff(p)*mult)));});
   const {out,giro}=perProductForecast();
@@ -79,6 +80,7 @@ function applyMorning(cfg,ctx){
     else if(pr&&pr.fixed!=null) budget=pr.fixed;                        // E1 q3: forcar preparo fixo (ignora cap)
     else if(pr&&pr.prevMult!=null) budget=Math.min(capacidadeHoje(),prev*pr.prevMult); // P4 varredura
     else budget=Math.min(capacidadeHoje(),servido);                    // P1 (atual)
+    if(cfg.cons)budget*=0.9;   // CONSERVADORA: preparo com margem menor (menos desperdicio em dia fraco)
     const ativos=produtosAtivos(); let sw=0; ativos.forEach(p=>sw+=(out[p._id]||0));
     ativos.forEach(p=>{const share=sw>0?(out[p._id]||0)/sw:1/ativos.length;let prep=round5(budget*share);if(naoPerece(p))prep=Math.max(prep,Math.floor(p.estoque||0));p.prep=prep;});
   } else produtosAtivos().forEach(p=>{const buf=cfg.prep==='giro'?(giro(p._id)?1.15:0.90):1.05;let prep=round5((out[p._id]||0)*buf*cs);if(naoPerece(p))prep=Math.max(prep,Math.floor(p.estoque||0));p.prep=prep;});
@@ -92,6 +94,7 @@ const BASKET=['baristas','mesas','treino','baristas'];   // FASE 3: maquina FORA
 function allUpg(id){for(const c in UPGRADES){const u=UPGRADES[c].find(x=>x.id===id);if(u)return u;}return null;}
 function cardapioPlan(){const g=S.bairro.gostos,list=['paodequeijo','cookie'];list.push(((g.refresco||1)>=1.1||(g.gelado||1)>=1.1)?'suco':'croissant');return list;}
 function applyGestao(cfg){let cardapio=0,cesta=0;
+  if(cfg.cons && (S.caixa<(window.CONS_RES||700) || S.emprestimo)) return {cardapio:0,cesta:0};   // CONSERVADORA: trava TODO capex quando caixa<reserva OU emprestimo ativo (para de comprar ate quitar)
   if(window.TF_BUYEARLY){ // DIAGNOSTICO (a): compra a especialidade a vista, no topo (antes do ambiente drenar o caixa)
     if(cfg.maquina){const u=allUpg('maquina');if(u&&S.upg.maquina<1&&S.caixa>=u.custos[0]){const c=S.caixa;comprarUpgrade(u);cesta+=(c-S.caixa);}}
     if(cfg.gelado){const u=allUpg('geladeira');if(u&&S.upg.geladeira<1&&S.caixa>=u.custos[0]){const c=S.caixa;comprarUpgrade(u);cesta+=(c-S.caixa);}}
@@ -238,7 +241,7 @@ const DBUNDLES={ O:{}, CESTA:{cesta:1}, MAQ:{maquina:1}, GEL:{gelado:1}, CLU:{cl
   noCesta:{clube:1,ambiente:1,maquina:1,gelado:1}, noClube:{cesta:1,ambiente:1,maquina:1,gelado:1},
   noAmb:{cesta:1,clube:1,maquina:1,gelado:1}, noMaq:{cesta:1,clube:1,ambiente:1,gelado:1}, noGel:{cesta:1,clube:1,ambiente:1,maquina:1} };
 function bundleCfg(bairro,f,priceOv){f=f||{};return {price:(priceOv!=null?priceOv:(C5_PRICE[bairro]||0.95)),grao:f.grao||'comum',prep:'oracle',
-  cardapio:f.cardapio||false,combo:false,cesta:!!f.cesta,maquina:!!f.maquina,gelado:!!f.gelado,clube:!!f.clube,rede:!!f.rede,ambiente:!!f.ambiente};}
+  cardapio:f.cardapio||false,combo:false,cesta:!!f.cesta,maquina:!!f.maquina,gelado:!!f.gelado,clube:!!f.clube,rede:!!f.rede,ambiente:!!f.ambiente,cons:!!f.cons};}
 
 // snapshot PRISTINO (capturado no load do harness, com UPGRADES/CFG limpos) — torna _dApply idempotente e a prova de timeout
 const _PRISTINE={ cfg:{caixaInicial:CFG.caixaInicial,salarioBarista:CFG.salarioBarista,custoMesaDia:CFG.custoMesaDia,fixoBase:CFG.fixoBase,capBase:CFG.capBase},
