@@ -145,6 +145,10 @@ function runGame(strat, seed, days, opts){
       S.custoFornecedor=ex; }
     const e=estimativaClientes(),previsto=e.mid+estimativaClube();
     const capHoje=capacidadeHoje();
+    if(window.SFC){ const K=window.SFC.K||5; if(perDay.length>=K){   // PROJETO #1: prep mira a VENDA (desconta rival+preço), fila fica com o freela
+      let sr=0,sp=0,sd=0; for(let k=perDay.length-K;k<perDay.length;k++){sr+=perDay[k].conc;sp+=perDay[k].preco;sd+=Math.max(1,perDay[k].demanda);}
+      const fSales=Math.max(window.SFC.floor||0.30, 1-sr/sd-sp/sd);
+      produtosAtivos().forEach(p=>{ if(!naoPerece(p)) p.prep=Math.max(0,Math.round(p.prep*fSales/5)*5); }); } }
     fitPreparoCaixa(); const preparado=produtosAtivos().reduce((s,p)=>s+p.prep,0);   // #2a: fit do jogo (nunca zera por bloqueio)
     simResultado=null; abrirDia(redMode);
     const r=simResultado; if(!r)break;
@@ -366,11 +370,29 @@ function forecastReport(bairroType){ const rows=(window.__FA&&window.__FA[bairro
     share_do_buraco:{naoApareceu:share('noShow'),fila:share('fila'),conc:share('conc'),preco:share('preco'),esgotou:share('esg')} };
 }
 function forecastClear(){ window.__FA={}; return 'ok'; }
+/* PROJETO #1 (shadow, não muda a jogada): a cada dia calcula prevVenda = midUI*(1 - rRival - rPreco),
+   com rRival/rPreco = taxas MÉDIAS dos últimos K dias (fila e evento NÃO entram). Compara atendido
+   contra prevVenda (deve centrar ~1.0) e contra o tráfego atual (centra ~0.65-0.76). */
+function salesForecastTest(bairroType, seeds, days, K){ K=K||5; days=days||60; fastDOM(true);
+  const rsV=[], rsT=[], expl=[];
+  try{ seeds.forEach(seed=>{ const P=runGame('ESPERTA',seed,days,{bairroType}).perDay;
+    for(let t=K;t<P.length;t++){ if(P[t].midUI<5)continue;
+      let sr=0,sp=0,sd=0; for(let k=t-K;k<t;k++){sr+=P[k].conc;sp+=P[k].preco;sd+=Math.max(1,P[k].demanda);}
+      const rR=sr/sd, rP=sp/sd, prevVenda=P[t].midUI*Math.max(0.30,1-rR-rP);
+      rsV.push(P[t].atendidos/Math.max(1,prevVenda)); rsT.push(P[t].atendidos/Math.max(1,P[t].midUI));
+      expl.push({rivalPct:Math.round(100*rR), precoPct:Math.round(100*rP)});
+    } }); } finally{ fastDOM(false); }
+  const q=(a,x)=>+quantile(a,x).toFixed(2), md=a=>+median(a).toFixed(2), mn=a=>a.length?+(a.reduce((s,x)=>s+x,0)/a.length).toFixed(0):0;
+  return {bairro:bairroType, n:rsV.length,
+    venda_ratio:{p10:q(rsV,.10),p50:md(rsV),p90:q(rsV,.90)},
+    trafego_ratio:{p10:q(rsT,.10),p50:md(rsT),p90:q(rsT,.90)},
+    rival_medio_pct:mn(expl.map(e=>e.rivalPct)), preco_medio_pct:mn(expl.map(e=>e.precoPct)) };
+}
 /* E4: vencedor estatisticamente distinto? (mediana do 1o FORA do IQR [p25,p75] do 2o) */
 function winnerStat(cells){ const ent=Object.entries(cells).sort((a,b)=>b[1].med-a[1].med); const a=ent[0],b=ent[1];
   const distinct=a[1].med>b[1].p75; return {win:a[0],med:a[1].med,second:b[0],secondP75:b[1].p75,distinct}; }
 
 return {probe,proofPRNG,runGame,battery,priceSweep,priceSweepSeg,priceSweepConc,medianRun,oracleBattery,oracleCfg,probeBattery,aggCell,fastDOM,CONFIGS,ORACLE_PRICE,BAIRROS,STRATS,forcedBairro,forcedConc,
   C5_PRICE,DBUNDLES,bundleCfg,batteryD,batteryDProbes,repBreakdown,priceSweepD,traceD,batteryDStat,winnerStat,quantile,
-  forecastAudit,forecastReport,forecastClear};
+  forecastAudit,forecastReport,forecastClear,salesForecastTest};
 })();
