@@ -1,0 +1,17 @@
+{
+  "name": "Café da Corte",
+  "short_name": "Café da Corte",
+  "description": "Assuma as rédeas de uma casa de café e faça-a florescer na alta sociedade.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#17110d",
+  "theme_color": "#17110d",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
