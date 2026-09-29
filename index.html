@@ -269,6 +269,22 @@
       </div>
     </section>
 
+    <!-- ABERTURA DO NEGÓCIO (FASE 4.5) -->
+    <section class="screen" id="tela-abertura" hidden>
+      <div class="head-dia"><div><div class="eyebrow">Abrir o negócio</div><h2>Montar seu café</h2></div></div>
+      <div class="tiny muted" style="margin:-2px 2px 10px;line-height:1.45">Capital inicial <b id="ab-capital" style="color:var(--gold)">R$ 6.500</b>. Escolha o ponto, compre o essencial e diga o dia do aluguel — o resto você constrói vendendo.</div>
+      <div class="cat-lbl">📍 O ponto <span class="dim tiny" style="text-transform:none;letter-spacing:0">· 3 ofertas na praça</span></div>
+      <div id="ab-pontos" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div class="cat-lbl">🛠️ Equipamento inicial</div>
+      <div id="ab-equip" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div class="cat-lbl">📦 Estoque de abertura</div>
+      <div id="ab-estoque" style="display:flex;gap:8px"></div>
+      <div class="cat-lbl">🗓️ Dia do vencimento do aluguel</div>
+      <div id="ab-due" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      <div class="card raised" id="ab-resumo" style="margin-top:12px"></div>
+      <button class="cta" id="ab-abrir" style="margin-top:10px">Abrir as portas ☕</button>
+    </section>
+
     <!-- MANHÃ -->
     <section class="screen" id="tela-manha" hidden>
       <div class="head-dia">
@@ -1033,8 +1049,8 @@ function sorteiaEvento(){
 }
 
 /* ===================== NAVEGAÇÃO ===================== */
-const TELAS=['tela-inicio','tela-manha','tela-dia','tela-fechamento','tela-carta','tela-gestao','tela-fim'];
-function mostra(id){TELAS.forEach(t=>$('#'+t).hidden=(t!==id));$('#hud').hidden=(id==='tela-inicio');$('#botnav').classList.toggle('show',id==='tela-gestao');window.scrollTo(0,0)}
+const TELAS=['tela-inicio','tela-abertura','tela-manha','tela-dia','tela-fechamento','tela-carta','tela-gestao','tela-fim'];
+function mostra(id){TELAS.forEach(t=>$('#'+t).hidden=(t!==id));$('#hud').hidden=(id==='tela-inicio'||id==='tela-abertura');$('#botnav').classList.toggle('show',id==='tela-gestao');window.scrollTo(0,0)}
 function proxVencimento(){ const diaMes=((S.dia-1)%30)+1, due=S.dueDay||CFG.dueDayDefault; let dias=due-diaMes; if(dias<0)dias+=30;
   const rent=(CFG.aluguel[S.bairro&&S.bairro.tipo]!=null?CFG.aluguel[S.bairro.tipo]:CFG.aluguelDefault);
   const luz=Math.round(CFG.luzBase+(S.upg.maquina||0)*CFG.luzMaq+(S.upg.geladeira||0)*CFG.luzGel+(S.upg.ar||0)*CFG.luzAr+(S._lightVol||0)*CFG.luzVol);
@@ -1970,7 +1986,7 @@ function abreMenu(){
     const sr=sheet.querySelector('#mn-seed-rand'); if(sr)sr.addEventListener('click',()=>{PREFS.seedFixa=null;salvarPrefs();flutua('Semente aleatória');render();});
     sheet.querySelector('#mn-atualizar').addEventListener('click',()=>{ try{S&&salvar();}catch(e){} flutua('Buscando a última versão…'); setTimeout(()=>location.reload(),300); });
     sheet.querySelector('#mn-fechar').addEventListener('click',()=>ov.remove());
-    sheet.querySelector('#mn-reset').addEventListener('click',()=>{if(!arm){arm=true;render();return}apagarSave();S=novoJogo();ov.remove();irManha()});
+    sheet.querySelector('#mn-reset').addEventListener('click',()=>{if(!arm){arm=true;render();return}apagarSave();ov.remove();iniciarAbertura()});
   }
   render();
 }
@@ -1991,8 +2007,73 @@ function restaurarBackup(){
   });
 }
 
+/* ===================== ABERTURA DO NEGÓCIO (FASE 4.5) ===================== */
+const AB_EQUIP=[
+  {id:'maquina', emoji:'☕', nome:'Máquina de espresso', desc:'Destrava expresso e cappuccino · puxa qualidade', custo:1200, apply:s=>{s.upg.maquina=1;}},
+  {id:'geladeira', emoji:'🧊', nome:'Geladeira', desc:'Destrava gelados e frappés · guarda o perecível', custo:900, apply:s=>{s.upg.geladeira=1;}},
+  {id:'mesas', emoji:'🪑', nome:'Salão com mesas', desc:'+ambiente e +capacidade de atendimento', custo:450, apply:s=>{s.upg.mesas=2;}},
+];
+const AB_ESTOQUE=[{nome:'Nenhum', custo:0, grao:0},{nome:'Básico', custo:300, grao:40},{nome:'Cheio', custo:600, grao:90}];
+const AB_DUE=[5,10,15,20];
+function _abMontagem(){ const a=window.__ab, p=a.pontos[a.sel.ponto]; let m=p.montagem; AB_EQUIP.forEach(e=>{if(a.sel.equip[e.id])m+=e.custo}); m+=AB_ESTOQUE[a.sel.estoque].custo; return m; }
+function _gerarBairroTipo(tipo){ const t=BAIRRO_TIPOS[tipo], r=a=>rndM(a[0],a[1]);
+  return { tipo, tipoNome:t.nome, emoji:t.emoji, nome:gerarNomeBairro(tipo), tamanho:Math.round(r(t.tamanho)),
+    renda:+r(t.renda).toFixed(2), pressa:+r(t.pressa).toFixed(2), sensPreco:+r(t.sensPreco).toFixed(2), fdsAmp:+r(t.fdsAmp).toFixed(2),
+    gostos:Object.assign({},t.gostos), naoCasa:(t.naoCasa||[]).slice(), vizinhos:t.vizinhos.slice() }; }
+function iniciarAbertura(){
+  const base=novoJogo();
+  const pool=Object.keys(BAIRRO_TIPOS), pick=[];
+  while(pick.length<3 && pool.length){ pick.push(pool.splice(Math.floor(srMundo()*pool.length),1)[0]); }
+  const pontos=pick.map(tp=>{ const al=(CFG.aluguel[tp]!=null?CFG.aluguel[tp]:CFG.aluguelDefault);
+    return { bairro:_gerarBairroTipo(tp), aluguel:al, montagem:Math.round(al*(0.7+srMundo()*0.6)/50)*50 }; });
+  window.__ab={ base, pontos, sel:{ponto:0, equip:{}, estoque:1, due:CFG.dueDayDefault} };
+  renderAbertura(); mostra('tela-abertura');
+}
+function renderAbertura(){
+  const a=window.__ab; if(!a)return; $('#ab-capital').textContent=brl0(CFG.caixaInicial);
+  const bp=$('#ab-pontos'); bp.innerHTML='';
+  a.pontos.forEach((p,i)=>{ const b=p.bairro, on=a.sel.ponto===i;
+    const c=document.createElement('button'); c.className='card'; c.style.cssText=`text-align:left;border-color:${on?'var(--gold)':'var(--line2)'};${on?'box-shadow:0 0 0 1px var(--gold)':''};display:flex;gap:10px;align-items:center;padding:12px`;
+    c.innerHTML=`<div style="font-size:24px">${b.emoji}</div><div style="flex:1;min-width:0">
+        <div style="font-weight:800;font-size:14px">${b.nome} <span class="dim" style="font-weight:600">· ${b.tipoNome}</span></div>
+        <div class="tiny muted" style="line-height:1.45">Aluguel <b style="color:var(--ink)">${brl0(p.aluguel)}/mês</b> · montagem <b style="color:var(--ink)">${brl0(p.montagem)}</b> · movimento ${b.tamanho>=55?'alto':b.tamanho>=42?'médio':'baixo'}</div></div>
+        ${on?'<div style="color:var(--gold);font-size:18px">✓</div>':''}`;
+    c.addEventListener('click',()=>{a.sel.ponto=i;renderAbertura()}); bp.appendChild(c); });
+  const be=$('#ab-equip'); be.innerHTML='';
+  AB_EQUIP.forEach(e=>{ const on=!!a.sel.equip[e.id];
+    const c=document.createElement('button'); c.className='card'; c.style.cssText=`text-align:left;border-color:${on?'var(--gold-soft)':'var(--line2)'};display:flex;gap:10px;align-items:center;padding:11px`;
+    c.innerHTML=`<div style="font-size:20px">${e.emoji}</div><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13.5px">${e.nome}</div><div class="tiny muted" style="line-height:1.35">${e.desc}</div></div>
+        <div style="text-align:right;white-space:nowrap"><div style="font-weight:800;font-size:13px">${brl0(e.custo)}</div><div class="tiny" style="color:${on?'var(--good)':'var(--ink-dim)'}">${on?'✓ incluído':'+ add'}</div></div>`;
+    c.addEventListener('click',()=>{a.sel.equip[e.id]=!on;renderAbertura()}); be.appendChild(c); });
+  const bs=$('#ab-estoque'); bs.innerHTML='';
+  AB_ESTOQUE.forEach((o,i)=>{ const on=a.sel.estoque===i; const btn=document.createElement('button'); btn.className='card'; btn.style.cssText=`flex:1;text-align:center;padding:9px;border-color:${on?'var(--gold)':'var(--line2)'}`;
+    btn.innerHTML=`<div style="font-weight:800;font-size:13px">${o.nome}</div><div class="tiny muted">${o.custo?brl0(o.custo):'—'}</div>`;
+    btn.addEventListener('click',()=>{a.sel.estoque=i;renderAbertura()}); bs.appendChild(btn); });
+  const bd=$('#ab-due'); bd.innerHTML='';
+  AB_DUE.forEach(d=>{ const on=a.sel.due===d; const btn=document.createElement('button'); btn.className='card'; btn.style.cssText=`flex:1;text-align:center;padding:9px;border-color:${on?'var(--gold)':'var(--line2)'}`;
+    btn.innerHTML=`<div style="font-weight:800;font-size:13px">dia ${d}</div>`; btn.addEventListener('click',()=>{a.sel.due=d;renderAbertura()}); bd.appendChild(btn); });
+  const mont=_abMontagem(), resto=CFG.caixaInicial-mont, p=a.pontos[a.sel.ponto];
+  let fin='', caixaAbre=resto;
+  if(resto<0){ const falta=-resto+300, total=Math.round(falta*1.2), parc=Math.max(50,Math.round(total/6)); caixaAbre=300;
+    fin=`<div class="tiny" style="color:var(--gold);margin-top:6px;line-height:1.45">🏦 O capital não cobre a montagem. Você financia <b>${brl0(falta)}</b> (total ${brl0(total)} c/ juros) em <b>${brl0(parc)}/mês</b> — e abre com ${brl0(300)} no caixa.</div>`; }
+  $('#ab-resumo').innerHTML=`<div style="display:flex;justify-content:space-between;font-size:13px"><span class="muted">Capital</span><b>${brl0(CFG.caixaInicial)}</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:3px"><span class="muted">Montagem (ponto+equip.+estoque)</span><b style="color:var(--bad)">– ${brl0(mont)}</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:14px;margin-top:6px;padding-top:6px;border-top:1px solid var(--line2)"><span style="font-weight:800">Caixa ao abrir</span><b style="color:${resto<0?'var(--gold)':'var(--good)'}">${brl0(caixaAbre)}</b></div>
+    <div class="tiny muted" style="margin-top:6px;line-height:1.4">🏠 Aluguel <b style="color:var(--ink)">${brl0(p.aluguel)}/mês</b> · vence <b style="color:var(--ink)">dia ${a.sel.due}</b> · 💡 luz por consumo</div>${fin}`;
+}
+function confirmarAbertura(){
+  const a=window.__ab; if(!a)return; const p=a.pontos[a.sel.ponto]; S=a.base; S.bairro=p.bairro;
+  const mont=_abMontagem(); S.caixa=CFG.caixaInicial-mont;
+  AB_EQUIP.forEach(e=>{ if(a.sel.equip[e.id]) e.apply(S); });
+  const est=AB_ESTOQUE[a.sel.estoque]; if(est.grao&&S.ing&&S.ing.graoComum) S.ing.graoComum.estoque=(S.ing.graoComum.estoque||0)+est.grao;
+  S.dueDay=a.sel.due;
+  if(S.caixa<0){ const falta=-S.caixa+300, total=Math.round(falta*1.2), parc=Math.max(50,Math.round(total/6)); S.financiamento={saldo:total,parcela:parc}; S.caixa+=falta; }
+  S.aberturaFeita=true; window.__ab=null; atualizaHud(); irManha();
+}
+
 /* ===================== BOOT ===================== */
-$('#btn-comecar').addEventListener('click',()=>{S=novoJogo();atualizaHud();irManha()});
+$('#btn-comecar').addEventListener('click',()=>{iniciarAbertura()});
+$('#ab-abrir').addEventListener('click',confirmarAbertura);
 $('#btn-continuar').addEventListener('click',()=>{S=carregar()||novoJogo();atualizaHud();irManha()});
 $('#btn-abrir').addEventListener('click',abrir);
 $('#btn-pos-dia').addEventListener('click',posDia);
