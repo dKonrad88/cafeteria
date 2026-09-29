@@ -428,6 +428,7 @@ const CFG={
   salarioBarista:60, fixoBase:38, custoMesaDia:3,
   elast:1.95, diasVermelhoMax:3,
   taxaDelivery:0.15, maqLimite:500,           // cafés antes da máquina pedir revisão
+  taxaCartao:0.05,                             // custo variável diário: maquininha + impostos sobre o faturamento (5%)
   salarioFreela:95,                            // reforço avulso de 1 dia (mais caro que o fixo)
   // FASE 2 — fit de gosto assimétrico. Um sistema só entrega seus bônus se seus produtos casam com o bairro.
   naoCasaMult:0.10,        // produto que não casa quase não vende
@@ -1035,10 +1036,11 @@ function simularDiaV2(){
   const filiais=simulaFiliais();
   const salarios=S.upg.baristas*CFG.salarioBarista+(S.freelaHoje||0)*CFG.salarioFreela;
   const fixo=S.upg.mesas*CFG.custoMesaDia+(S.custoFornecedor||0)+(S.contratoFornecedor?S.contratoFornecedor.custoDia:0)+totalAssinantes()*CFG.clubePorAssinDia;   // FASE 4.5: aluguel(fixoBase) e luz(máquina/geladeira/ar) saíram do diário → conta MENSAL no vencimento
-  const lucro=receita+clube.receita+receitaDeliv+gorjeta+filiais.lucro-custoIng-custoRevenda-perdaSobra-salarios-fixo-conserto;
+  const taxaVar=Math.round((receita+clube.receita+receitaDeliv)*CFG.taxaCartao);   // custo variável: maquininha + impostos sobre o faturamento do dia
+  const lucro=receita+clube.receita+receitaDeliv+gorjeta+filiais.lucro-custoIng-custoRevenda-perdaSobra-salarios-fixo-conserto-taxaVar;
   ultimoDebugV2={contagem, amostra, nWalk:Math.round(nWalk), regulares, boca:+(S.boca).toFixed(2), satDia:+satDiaAg.toFixed(2), perdidosPreco, perdidosFila:round(perdidosFila),
     foramConcorrente, motivosConc, amostraConc, concReagiu:conc?conc._reagiu:null, concFechou:conc?!!conc._fechou:false, concNivel:conc?conc.nivelPreco:null, concFama:conc?conc.fama:null, concPromo:conc?conc.promoDias:0};
-  return {evento,receita,receitaClube:clube.receita,clubeNovos:clube.novos,clubeNovosPlanos:clube.novosPorPlano,clubeRenov:clube.renovados,clubeCancel:clube.cancelados,receitaDeliv,gorjeta,conserto,custoIng,custoRevenda,perdaSobra,perdaSobraFull,salarios,fixo,lucro,
+  return {evento,receita,receitaClube:clube.receita,clubeNovos:clube.novos,clubeNovosPlanos:clube.novosPorPlano,clubeRenov:clube.renovados,clubeCancel:clube.cancelados,receitaDeliv,gorjeta,conserto,custoIng,custoRevenda,perdaSobra,perdaSobraFull,salarios,fixo,taxaVar,lucro,
     filiaisLucro:filiais.lucro,filiaisBruto:filiais.bruto,filiaisCusto:filiais.custo,filiaisDet:filiais.det,
     itensVendidos,vendasPagas,ticketMedio,semComprar,perdidosFila:round(perdidosFila),faltou:round(totalFaltou),perdidosPreco:round(perdidosPreco),foramConcorrente,
     assinAtend:round(assinAtend),casadaVend:round(casadaVend),rNovo,dRep,porItem,demandaTotal:round(demandaTotal),cap:round(cap),
@@ -1440,7 +1442,7 @@ function irFechamento(){
   const r=simResultado;
   // §14.4: a sobra JÁ foi paga no abrir (o prep compra todo o insumo). Aqui só se credita a recuperação da geladeira
   // (perdaSobraFull - perdaSobra) — sem geladeira isso é 0. NÃO se recobra a perda (era o débito duplo).
-  S.caixa+=r.receita+r.receitaClube+r.receitaDeliv+r.gorjeta+r.filiaisLucro+((r.perdaSobraFull||0)-r.perdaSobra)-r.salarios-r.fixo-r.conserto;
+  S.caixa+=r.receita+r.receitaClube+r.receitaDeliv+r.gorjeta+r.filiaisLucro+((r.perdaSobraFull||0)-r.perdaSobra)-r.salarios-r.fixo-r.conserto-(r.taxaVar||0);
   // FASE 4.5: conta MENSAL (aluguel + luz por consumo) no dia de vencimento; financiamento na mesma data
   S._lightVol=(S._lightVol||0)+r.itensVendidos;
   { const _diaMes=((S.dia-1)%30)+1, _due=S.dueDay||CFG.dueDayDefault;
@@ -1507,6 +1509,7 @@ function irFechamento(){
   if(r.perdaSobra>0)add('Perda (sobra)','– '+brl(r.perdaSobra),'neg');
   if(r.salarios>0)add('Salários','– '+brl(r.salarios),'neg');
   add('Custo fixo','– '+brl(r.fixo),'neg');
+  if(r.taxaVar>0)add(`💳 Taxas · maquininha + impostos (${Math.round(CFG.taxaCartao*100)}%)`,'– '+brl(r.taxaVar),'neg');
   if(r._aluguel)add('🏠 Aluguel do mês','– '+brl(r._aluguel),'neg');
   if(r._luz)add('💡 Luz do mês (consumo)','– '+brl(r._luz),'neg');
   if(r._financ)add('🏦 Parcela do financiamento','– '+brl(r._financ),'neg');
