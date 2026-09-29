@@ -76,4 +76,22 @@ só a dupla **máquina/gelado** tem fit por bairro. Estrutura final adotada (ace
   intrínseco e o bairro rico compra alguns mesmo com apelo baixo). Gelado é armadilha dura porque, além da
   manutenção, perde a recuperação-de-sobra da geladeira — perda inevitável mesmo com preparo perfeito.
 
-**Pendente:** FASE 3 (slots — máquina/gelado como o slot variável; cesta é base, não slot), FASE 4-6.
+### FASE 3 — slots CANCELADO (medido, 500 seeds × 5 bairros)
+**Não há teto de slots.** A estrutura é fundação {cesta, ambiente, clube} + especialidade {máquina | gelado | nenhuma}. O teto foi testado (S1/S2) e **colapsa a variação por bairro**:
+- **S2** (fundação cesta+ambiente · teto de 1 entre clube/máquina/gelado): vencedor = **clube em 5/5** (distinto, porém uniforme → 0 variação). Erro do recorte: pôr o clube no slot contraria a FASE 2 (clube é fundação).
+- **S1** (qualquer 3 dos 5): vencedor = **cesta+clube+ambiente em 4/5** (distinto só 2/5); a especialidade nunca entra no trio ótimo. Causa: cada sistema-base vale mais, sozinho, que máquina/gelado — a especialidade só rende **somada por cima** da base cheia, nunca **no lugar** de um base.
+- O que funciona (= sem teto): "comprar tudo" perde da base em **5/5**; especialidade errada é catastrófica (gelado no boêmio −79%, máquina no turístico −64%); a especialidade certa é distinta (E4) em **3/5** (comercial/universitário/turístico).
+
+**FASE 3 (alvo revisado): fortalecer a especialidade.** Máquina precisa bater "não comprar" com significância no **residencial e boêmio** (hoje empata no ruído: res 17.079 vs p75 base 17.441; boê 14.846 vs 16.638). Sem suavizar a punição da especialidade errada; sem "comprar tudo" ganhar; ~0% falência. Vias medidas isoladas (500 seeds): V1 ganho-de-fit, V2 piso-da-base, V3 gosto-do-produto. Proibido mexer em preço/grão/caixa/custo fixo.
+
+**Resultado (medido, 500 seeds × 5 bairros, régua E4):** nenhuma das 3 vias fecha os 5. Fica **3/5** (comercial/universitário/turístico distintos na base). Por quê:
+- **V1 (apelo de espresso ↑):** fecha o **residencial** (maq 17.079→18.126 @1.3 > p75 base 17.441) mas **quebra o aceite #2** — em TODA intensidade tira a máquina do catastrófico no **refresco** (turístico maq 5.276→16.412 > base 14.595). Mecanismo: a diferença maq−base é o **valor do produto espresso**; subir apelo reduz o **desperdício de espresso preparado-e-não-vendido**, e esse dreno não é gated por bairro (o `naoCasa` corta a venda, não o desperdício do preparo) → ajuda a máquina em todo lugar. Também estoura o #3 forte (@2.0 comercial tudo 21.098 > base 17.913).
+- **V2 (café coado ↓, baixar piso da base):** backfira — a base **não cai** (demanda migra pra comida) e **resgata a especialidade errada** (boêmio gelado 2.926→13.642), quebrando #2.
+- **V3 (gosto quente ↑ no café):** **nulo** — jogo é capacidade-limitado, boost de demanda de categoria só remexe o mix, não aumenta venda (base e maq inalteradas).
+- **Boêmio não fecha por nenhuma via:** é limitado por **variância + falência ~16%** (menor bairro, `fdsAmp` alto), não por apelo — a mediana da maq (~15.900, platô) não alcança o p75 sortudo da base (16.638). Isso é identidade do bairro, não alavanca de FASE 3.
+
+**O que falta (para 5/5):** um reforço da máquina **seletivo por bairro que não vaze**. O único candidato limpo é o bônus **estrutural** gated por `_maqFit` (capacidade/qualidade — ≈0 no refresco), não o **apelo do produto** (que vaza via desperdício). Mas no harness a "cesta" já compra uma máquina → a base já tem esse bônus, então reforçá-lo não separa maq de base. Fix real = tornar o **hardware da máquina exclusivo da especialidade** (fora da base) + reforçar o bônus `_maqFit` — é **mudança de base** (precisa de aval). Alternativa seria margem/preço (proibido). Boêmio, além disso, pede um olhar de variância/dificuldade (falência 16%).
+
+**Decisão:** aceito 3/5 (ver aceite do Diego) → FASE 4. Registrado que as 3 vias foram medidas e por que não deram.
+
+**Pendente:** FASE 4-6.
