@@ -1,7 +1,8 @@
-/* Café da Corte — service worker (offline-first).
-   O jogo é single-file (CSS/JS inline), então cachear index.html cacheia quase tudo.
-   Fontes do Google são cacheadas em runtime; se nunca carregaram, o fallback (Georgia/system) cobre. */
-const CACHE = 'cafe-da-corte-v1';
+/* Café da Corte — service worker.
+   HTML: NETWORK-FIRST (online sempre pega a versão nova; offline cai pro cache) — evita servir
+   uma build velha depois de um deploy. O jogo é single-file (CSS/JS inline), então o index.html
+   cacheado cobre quase tudo offline. Fontes do Google são cacheadas em runtime (fallback Georgia/system). */
+const CACHE = 'cafe-da-corte-v3';
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
 self.addEventListener('install', e => {
@@ -25,15 +26,16 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
 
-  // Navegação: sempre serve o shell do cache (offline-first), rede como reforço.
+  // Navegação: NETWORK-FIRST. Tenta a rede (build nova), atualiza o cache, e só cai pro cache offline.
   if (req.mode === 'navigate') {
     e.respondWith((async () => {
-      const cached = await caches.match('./index.html');
-      if (cached) {
-        fetch(req).then(r => r && r.ok && caches.open(CACHE).then(c => c.put('./index.html', r.clone()))).catch(() => {});
-        return cached;
+      try {
+        const fresh = await fetch(req);
+        if (fresh && fresh.ok) { caches.open(CACHE).then(c => c.put('./index.html', fresh.clone())); return fresh; }
+        throw 0;
+      } catch {
+        return (await caches.match('./index.html')) || (await caches.match('./')) || Response.error();
       }
-      try { return await fetch(req); } catch { return caches.match('./index.html'); }
     })());
     return;
   }
