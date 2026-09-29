@@ -195,4 +195,10 @@ Direção: o jogo passa a começar com a **decisão de abrir** (capital − mont
 
 **Recomendação (ordem):** (1) MVP indivisível = capital ~6.500 + aluguel mensal por bairro **com vencimento VISÍVEL na UI** + tirar a parcela-aluguel do fixoBase (rent sozinho sem capital quebra na hora; UI não é opcional); (2) tela de abertura; (3) luz mensal; (4) financiamento; (5) salários semanais. **Re-medir o aceite após CADA passo.** Nada implementado — aguardando aval.
 
-**Pendente:** decisão do Diego sobre FASE 4.5; depois FASE 5 (vida própria) e 6.
+### FASE 5.1 — Clima com inércia: EXPLORADA e PAUSADA (código revertido; re-implementar sobre a economia nova pós-4.5)
+Mecânica desenhada (flag `window.CLIMA5`): `S.temp` contínua com **inércia + estações** (`temp += (seasonMean − temp)*0.18 + ruído`, seasonMean = amp·sin(2π(dia+phase)/período), amp~2.2, período~50); `climaTempNow()` alimenta a afinidade contínua; e o pino-chave — **pico de clima vira "FEBRE"** que relaxa o `naoCasa` (`mult += (FAD−mult)·relax`, FAD~1.4), senão o `naoCasa` bloqueia e o clima é ruído bonito.
+- **Medido (a métrica do Diego "dias com especialidade ≠ dia 1"):** café-bairros flipam pra gelado **5–13 dias** no calor (residencial 5–9, boêmio 8–13, comercial 1–3); refresco flipam pra café quente ~25–28 dias no frio (via café-coado, não muda build).
+- **Em voz alta — o apelo flipa, o BUILD ótimo NÃO muda:** com CLIMA5, tudo<máq em 5/5 e gelado ainda<base — a janela de 5–13 dias não paga uma geladeira permanente. Aceite permanente segurou (E4 5/5, errada<base, tudo<melhor). **Pela definição estrita ("ótimo do dia 1 continua ótimo"), ainda é decoração no nível do build.** Pra o build mudar: (a) verões mais fortes (afrouxa "errada catastrófica") OU (b) recompensar ADAPTAÇÃO sazonal (geladeira barata/rentável) — a economia estática atual pune (upkeep por janela curta).
+- Código revertido do working tree pra manter a base FASE-4 pristina na 4.5. Re-implementar sobre a economia da 4.5 (que muda margens e o custo da geladeira → pode mudar o veredito do build).
+
+**Pendente:** decisão do Diego sobre FASE 4.5; depois FASE 5 (vida própria, começando pela 5.1 re-baseada) e 6.
