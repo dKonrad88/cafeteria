@@ -252,6 +252,7 @@
     <div class="hud-item"><span class="lbl">Dia</span><span class="val" id="hud-dia">1</span></div>
     <div class="hud-item"><span class="lbl">Caixa</span><span class="val money" id="hud-caixa">R$ 0</span></div>
     <div class="hud-item" id="hud-rep-wrap"><span class="lbl">Reputação</span><span class="val" id="hud-rep">⭐ 3,0</span></div>
+    <div class="hud-item" id="hud-venc-wrap"><span class="lbl">Vencimento</span><span class="val" id="hud-venc">—</span></div>
     <button id="btn-menu" aria-label="Menu">⚙</button>
   </header>
 
@@ -402,7 +403,7 @@ const round=Math.round;
 
 /* ===================== BALANCEAMENTO ===================== */
 const CFG={
-  caixaInicial:300, baseCidade:40, capBase:45,
+  caixaInicial:6500, baseCidade:40, capBase:45,   // FASE 4.5: começa com capital pra abrir o negócio
   capBarista:35, capMesa:8, capMaquina:8,
   salarioBarista:60, fixoBase:38, custoMesaDia:3,
   elast:1.95, diasVermelhoMax:3,
@@ -413,6 +414,10 @@ const CFG={
   maqManutDia:15,          // manutenção da máquina por nível/dia
   geladeiraDia:14,         // energia da geladeira por nível/dia
   clubePorAssinDia:1,      // administração do clube por assinante/dia (leve: clube é base, não decisão)
+  // FASE 4.5 — economia realista de abertura. O que era custo fixo DIÁRIO virou conta MENSAL no vencimento.
+  aluguel:{residencial:800, comercial:950, universitario:700, boemio:600, turistico:1000},  // aluguel/mês por bairro (ricos calibrados p/ baixo)
+  aluguelDefault:800, dueDayDefault:10,        // dia de vencimento padrão (jogador escolhe na abertura)
+  luzBase:150, luzMaq:200, luzGel:250, luzAr:300, luzVol:0.3,   // luz/mês = base + por equipamento + por volume vendido
 };
 const CLIMAS={
   ensolarado:{nome:'Ensolarado',emoji:'☀️',dem:1.05,temp:1},
@@ -642,6 +647,7 @@ function novoJogo(){
     maq:{uso:0}, diaSemana:Math.floor(srMundo()*7), freelaHoje:0,
     filiais:[], emprestimo:null, metasVistas:[], patrimonioPico:CFG.caixaInicial,
     boca:1, regulares:0,
+    dueDay:CFG.dueDayDefault, _lightVol:0, financiamento:null, aberturaFeita:false,   // FASE 4.5: conta mensal + financiamento + tela de abertura
   };
 }
 function salvar(){try{if(S){S.rngStateM=_rngM;S.rngStateC=_rngC;}localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}
@@ -1008,8 +1014,7 @@ function simularDiaV2(){
   const clube=atualizaClube({expostos:vendasPagas,satDia,faltaP,atendFrac});
   const filiais=simulaFiliais();
   const salarios=S.upg.baristas*CFG.salarioBarista+(S.freelaHoje||0)*CFG.salarioFreela;
-  const fixo=CFG.fixoBase+S.upg.mesas*CFG.custoMesaDia+(S.custoFornecedor||0)+(S.contratoFornecedor?S.contratoFornecedor.custoDia:0)+(S.upg.ar?10:0)
-    +S.upg.maquina*CFG.maqManutDia+S.upg.geladeira*CFG.geladeiraDia+totalAssinantes()*CFG.clubePorAssinDia;   // FASE 2: custos recorrentes (máquina/geladeira/clube)
+  const fixo=S.upg.mesas*CFG.custoMesaDia+(S.custoFornecedor||0)+(S.contratoFornecedor?S.contratoFornecedor.custoDia:0)+totalAssinantes()*CFG.clubePorAssinDia;   // FASE 4.5: aluguel(fixoBase) e luz(máquina/geladeira/ar) saíram do diário → conta MENSAL no vencimento
   const lucro=receita+clube.receita+receitaDeliv+gorjeta+filiais.lucro-custoIng-custoRevenda-perdaSobra-salarios-fixo-conserto;
   ultimoDebugV2={contagem, amostra, nWalk:Math.round(nWalk), regulares, boca:+(S.boca).toFixed(2), satDia:+satDiaAg.toFixed(2), perdidosPreco, perdidosFila:round(perdidosFila),
     foramConcorrente, motivosConc, amostraConc, concReagiu:conc?conc._reagiu:null, concFechou:conc?!!conc._fechou:false, concNivel:conc?conc.nivelPreco:null, concFama:conc?conc.fama:null, concPromo:conc?conc.promoDias:0};
@@ -1030,10 +1035,18 @@ function sorteiaEvento(){
 /* ===================== NAVEGAÇÃO ===================== */
 const TELAS=['tela-inicio','tela-manha','tela-dia','tela-fechamento','tela-carta','tela-gestao','tela-fim'];
 function mostra(id){TELAS.forEach(t=>$('#'+t).hidden=(t!==id));$('#hud').hidden=(id==='tela-inicio');$('#botnav').classList.toggle('show',id==='tela-gestao');window.scrollTo(0,0)}
+function proxVencimento(){ const diaMes=((S.dia-1)%30)+1, due=S.dueDay||CFG.dueDayDefault; let dias=due-diaMes; if(dias<0)dias+=30;
+  const rent=(CFG.aluguel[S.bairro&&S.bairro.tipo]!=null?CFG.aluguel[S.bairro.tipo]:CFG.aluguelDefault);
+  const luz=Math.round(CFG.luzBase+(S.upg.maquina||0)*CFG.luzMaq+(S.upg.geladeira||0)*CFG.luzGel+(S.upg.ar||0)*CFG.luzAr+(S._lightVol||0)*CFG.luzVol);
+  return {dias, rent, luz, valor:rent+luz}; }
 function atualizaHud(){
   $('#hud-dia').textContent=S.dia;
   const c=$('#hud-caixa');c.textContent=brl0(S.caixa);c.classList.toggle('neg',S.caixa<0);
   $('#hud-rep').innerHTML='⭐ '+repGeral().toFixed(1).replace('.',',')+' <span style="font-size:10px;opacity:.55;vertical-align:1px">ⓘ</span>';
+  const v=$('#hud-venc'); if(v){ const pv=proxVencimento();
+    v.textContent=pv.dias===0?'hoje!':'em '+pv.dias+'d';
+    v.style.color=pv.dias<=1?'var(--bad)':(pv.dias<=4?'var(--gold)':'var(--ink)');
+    v.title=`Aluguel ${brl0(pv.rent)} + luz ${brl0(pv.luz)} = ${brl0(pv.valor)}`; }
 }
 
 /* ===================== MANHÃ ===================== */
@@ -1044,7 +1057,9 @@ function irManha(){
   atualizaHud();
   const cl=CLIMAS[S.climaHoje], t=tendObj();
   $('#manha-titulo').textContent='Dia '+S.dia;
-  $('#manha-chips').innerHTML=`<span class="chip">📅 ${DIAS_SEMANA[S.diaSemana%7].nome}</span><span class="chip">${cl.emoji} ${cl.nome}</span><span class="chip trend">${t.emoji} ${t.nome}</span>`+(S.boost?`<span class="chip trend">🚀 Em alta!</span>`:'');
+  const _pv=proxVencimento();
+  const _vencChip=`<span class="chip" style="${_pv.dias<=1?'border-color:var(--bad);color:var(--bad)':(_pv.dias<=4?'border-color:var(--gold-soft);color:var(--gold)':'')}">🏠 ${_pv.dias===0?'vence hoje':'vence em '+_pv.dias+'d'} · ${brl0(_pv.valor)}</span>`;
+  $('#manha-chips').innerHTML=`<span class="chip">📅 ${DIAS_SEMANA[S.diaSemana%7].nome}</span><span class="chip">${cl.emoji} ${cl.nome}</span><span class="chip trend">${t.emoji} ${t.nome}</span>${_vencChip}`+(S.boost?`<span class="chip trend">🚀 Em alta!</span>`:'');
   atualizaCapacidade();
   renderGrao(); renderItensManha(); manhaSec('cardapio');
   mostra('tela-manha'); salvar();
@@ -1376,6 +1391,15 @@ function irFechamento(){
   // §14.4: a sobra JÁ foi paga no abrir (o prep compra todo o insumo). Aqui só se credita a recuperação da geladeira
   // (perdaSobraFull - perdaSobra) — sem geladeira isso é 0. NÃO se recobra a perda (era o débito duplo).
   S.caixa+=r.receita+r.receitaClube+r.receitaDeliv+r.gorjeta+r.filiaisLucro+((r.perdaSobraFull||0)-r.perdaSobra)-r.salarios-r.fixo-r.conserto;
+  // FASE 4.5: conta MENSAL (aluguel + luz por consumo) no dia de vencimento; financiamento na mesma data
+  S._lightVol=(S._lightVol||0)+r.itensVendidos;
+  { const _diaMes=((S.dia-1)%30)+1, _due=S.dueDay||CFG.dueDayDefault;
+    if(_diaMes===_due){
+      const rent=(CFG.aluguel[S.bairro.tipo]!=null?CFG.aluguel[S.bairro.tipo]:CFG.aluguelDefault);
+      const luz=Math.round(CFG.luzBase+S.upg.maquina*CFG.luzMaq+S.upg.geladeira*CFG.luzGel+S.upg.ar*CFG.luzAr+(S._lightVol||0)*CFG.luzVol);
+      S.caixa-=rent+luz; r._aluguel=rent; r._luz=luz; S._lightVol=0;
+      if(S.financiamento&&S.financiamento.saldo>0){ const fp=Math.min(S.financiamento.parcela,S.financiamento.saldo); S.caixa-=fp; S.financiamento.saldo-=fp; r._financ=fp; if(S.financiamento.saldo<=0.5){S.financiamento=null;setTimeout(()=>flutua('🏦 Financiamento quitado!'),700);} }
+    } }
   // parcela do empréstimo (se pegou fôlego com o banco)
   let parcela=0;
   if(S.emprestimo&&S.emprestimo.saldo>0){ parcela=Math.min(S.emprestimo.parcela,S.emprestimo.saldo); S.caixa-=parcela; S.emprestimo.saldo-=parcela; if(S.emprestimo.saldo<=0.5){S.emprestimo=null;setTimeout(()=>flutua('🏦 Empréstimo quitado!'),700);} }
@@ -1433,6 +1457,9 @@ function irFechamento(){
   if(r.perdaSobra>0)add('Perda (sobra)','– '+brl(r.perdaSobra),'neg');
   if(r.salarios>0)add('Salários','– '+brl(r.salarios),'neg');
   add('Custo fixo','– '+brl(r.fixo),'neg');
+  if(r._aluguel)add('🏠 Aluguel do mês','– '+brl(r._aluguel),'neg');
+  if(r._luz)add('💡 Luz do mês (consumo)','– '+brl(r._luz),'neg');
+  if(r._financ)add('🏦 Parcela do financiamento','– '+brl(r._financ),'neg');
   if(r.conserto>0)add('🔧 Conserto do equipamento','– '+brl(r.conserto),'neg');
   if(r._parcela>0)add('🏦 Parcela do empréstimo','– '+brl(r._parcela),'neg');
   add('💳 Ticket médio (por venda paga)',brl(r.ticketMedio));
