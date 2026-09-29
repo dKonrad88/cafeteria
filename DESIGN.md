@@ -84,14 +84,28 @@ só a dupla **máquina/gelado** tem fit por bairro. Estrutura final adotada (ace
 
 **FASE 3 (alvo revisado): fortalecer a especialidade.** Máquina precisa bater "não comprar" com significância no **residencial e boêmio** (hoje empata no ruído: res 17.079 vs p75 base 17.441; boê 14.846 vs 16.638). Sem suavizar a punição da especialidade errada; sem "comprar tudo" ganhar; ~0% falência. Vias medidas isoladas (500 seeds): V1 ganho-de-fit, V2 piso-da-base, V3 gosto-do-produto. Proibido mexer em preço/grão/caixa/custo fixo.
 
-**Resultado (medido, 500 seeds × 5 bairros, régua E4):** nenhuma das 3 vias fecha os 5. Fica **3/5** (comercial/universitário/turístico distintos na base). Por quê:
+**Tentativa (vias V1/V2/V3) — depois SUPERADA (ver Resolução abaixo):** medidas sobre a base contaminada, nenhuma fechava os 5. Por quê:
 - **V1 (apelo de espresso ↑):** fecha o **residencial** (maq 17.079→18.126 @1.3 > p75 base 17.441) mas **quebra o aceite #2** — em TODA intensidade tira a máquina do catastrófico no **refresco** (turístico maq 5.276→16.412 > base 14.595). Mecanismo: a diferença maq−base é o **valor do produto espresso**; subir apelo reduz o **desperdício de espresso preparado-e-não-vendido**, e esse dreno não é gated por bairro (o `naoCasa` corta a venda, não o desperdício do preparo) → ajuda a máquina em todo lugar. Também estoura o #3 forte (@2.0 comercial tudo 21.098 > base 17.913).
 - **V2 (café coado ↓, baixar piso da base):** backfira — a base **não cai** (demanda migra pra comida) e **resgata a especialidade errada** (boêmio gelado 2.926→13.642), quebrando #2.
 - **V3 (gosto quente ↑ no café):** **nulo** — jogo é capacidade-limitado, boost de demanda de categoria só remexe o mix, não aumenta venda (base e maq inalteradas).
 - **Boêmio não fecha por nenhuma via:** é limitado por **variância + falência ~16%** (menor bairro, `fdsAmp` alto), não por apelo — a mediana da maq (~15.900, platô) não alcança o p75 sortudo da base (16.638). Isso é identidade do bairro, não alavanca de FASE 3.
 
-**O que falta (para 5/5):** um reforço da máquina **seletivo por bairro que não vaze**. O único candidato limpo é o bônus **estrutural** gated por `_maqFit` (capacidade/qualidade — ≈0 no refresco), não o **apelo do produto** (que vaza via desperdício). Mas no harness a "cesta" já compra uma máquina → a base já tem esse bônus, então reforçá-lo não separa maq de base. Fix real = tornar o **hardware da máquina exclusivo da especialidade** (fora da base) + reforçar o bônus `_maqFit` — é **mudança de base** (precisa de aval). Alternativa seria margem/preço (proibido). Boêmio, além disso, pede um olhar de variância/dificuldade (falência 16%).
+**RESOLUÇÃO (a resposta certa): era artefato de medição, não do jogo.** O "3/5" e a fraqueza da máquina eram **contaminação do harness**: a "cesta" (proxy de jogada-base) comprava uma máquina como item do `BASKET` → toda "base" já tinha o hardware da máquina (em café: capacidade/qualidade via `_maqFit`; em refresco: pagava manutenção por uma máquina inútil). Logo "+máquina" nunca foi escolha real. **O `index.html` está limpo** — o jogador compra cada upgrade avulso (`renderMelhorias`/`comprarUpgrade`), não há cesta; máquina e geladeira são upgrades avulsos. Fix aplicado **só no `sim/harness.js`** (máquina fora do `BASKET` → simétrico com a geladeira, que nunca esteve na base).
 
-**Decisão:** aceito 3/5 (ver aceite do Diego) → FASE 4. Registrado que as 3 vias foram medidas e por que não deram.
+**Tabela limpa (500 seeds × 5 bairros, base SEM máquina) — o "3/5" anterior era ARTEFATO:**
+| bairro | base | +máq | +gel | +ambos | venc | esp. certa bate base (E4) |
+|---|--:|--:|--:|--:|---|:--:|
+| residencial | 13.567 | **17.096** | 10.068 | 14.024 | máq | ✅ |
+| comercial | 15.408 | **20.197** | 13.025 | 17.415 | máq | ✅ |
+| boêmio | 12.377 | **15.159** | 2.565 | 8.655 | máq | ✅ |
+| universitário | 11.607 | 11.444 | **14.124** | 8.404 | gel | ✅ |
+| turístico | 15.706 | 13.357 | **19.169** | 9.980 | gel | ✅ |
+
+- **Especialidade certa bate a base (E4): 5/5.** **Sem** reforçar `_maqFit` (desnecessário — fechou só com o fix de medição; adicionar desequilibraria; combinado não aplicar).
+- Contaminação escondia: café tinha base **inflada** (máquina grátis); refresco tinha base **subestimada** (pagava manutenção de máquina inútil).
+- **#3 redefinido (aprovado):** "tudo" < **melhor especialidade** em 5/5 (não mais "tudo < base"). ⚠️ **Assimetria registrada:** no **café, comprar os dois AINDA supera a base** (res 14.024>13.567; com 17.415>15.408) — quem compra tudo não é punido no café, só fica abaixo do ótimo; no **refresco, tudo < base** (punido).
+- **Diagnóstico (a) — custo real de errar (especialidade À VISTA):** no refresco a máquina é **catastrófica** — universitário base 11.607→máq **295** (−97%, falência 34%); turístico 15.706→**540** (−97%, falência 14%). O "empate" (univ máq 11.444≈base) da tabela principal era **artefato de compra tardia** (ambiente drenava o caixa antes). Custo de errar: **café gelado −79% (boê) · refresco máquina −97%** — assimétrico e MAIOR no refresco. Não corrigido (registrado). Hook `TF_BUYEARLY` no harness reproduz.
+
+**Dívidas p/ FASE 4:** (1) **falência no bem-jogado**: boêmio 14,6% e residencial ~7% vs ~0–2,6% nos demais; (2) **overpricing em bairro rico ainda lucra** (baixo-volume se auto-blinda).
 
 **Pendente:** FASE 4-6.

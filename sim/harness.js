@@ -89,10 +89,14 @@ function applyMorning(cfg,ctx){
   } else S.freelaHoje=0;
   return capexGrao;
 }
-const BASKET=['baristas','mesas','treino','maquina','baristas'];
+const BASKET=['baristas','mesas','treino','baristas'];   // FASE 3: maquina FORA da cesta — hardware de especialidade nao entra na fundacao (simetrico com geladeira)
 function allUpg(id){for(const c in UPGRADES){const u=UPGRADES[c].find(x=>x.id===id);if(u)return u;}return null;}
 function cardapioPlan(){const g=S.bairro.gostos,list=['paodequeijo','cookie'];list.push(((g.refresco||1)>=1.1||(g.gelado||1)>=1.1)?'suco':'croissant');return list;}
 function applyGestao(cfg){let cardapio=0,cesta=0;
+  if(window.TF_BUYEARLY){ // DIAGNOSTICO (a): compra a especialidade a vista, no topo (antes do ambiente drenar o caixa)
+    if(cfg.maquina){const u=allUpg('maquina');if(u&&S.upg.maquina<1&&S.caixa>=u.custos[0]){const c=S.caixa;comprarUpgrade(u);cesta+=(c-S.caixa);}}
+    if(cfg.gelado){const u=allUpg('geladeira');if(u&&S.upg.geladeira<1&&S.caixa>=u.custos[0]){const c=S.caixa;comprarUpgrade(u);cesta+=(c-S.caixa);}}
+  }
   if(cfg.cardapio){const _list=cfg.cardapio==='full'?CARDAPIO_FULL_LIST:cardapioPlan();for(const id of _list){const it=CARDAPIO_LOJA.find(c=>c.id===id);if(!it)continue;const p=S.prod[id];if(!p||p.ativo)continue;const ok=(!it.exige||S.upg[it.exige]>=1)&&(!it.exige2||S.upg[it.exige2]>=1);if(!ok)continue;if(S.caixa>=2*it.custo){S.caixa-=it.custo;cardapio+=it.custo;p.ativo=true;if(p.prep===0)p.prep=15;}}}
   if(cfg.cesta){if(S._bi==null)S._bi=0;if(S._bi<BASKET.length){const u=allUpg(BASKET[S._bi]),lvl=S.upg[BASKET[S._bi]];if(lvl>=u.max){S._bi++;}else if(S.caixa>=2*u.custos[lvl]){const c=S.caixa;comprarUpgrade(u);cesta+=(c-S.caixa);S._bi++;}}}
   if(cfg.ambiente){ // E5: compra os upgrades de ambiente (ar/decor/musica/wifi) + mesas ao maximo
