@@ -1631,12 +1631,20 @@ function renderPrevisao(){
   // só os FATOS — o jogador tira a conclusão se vai bombar ou esvaziar
   const chips=[`📅 ${ds.nome}`, `${cl.emoji} ${cl.nome}`];
   if(t.id!=='normal') chips.push(`${t.emoji} ${t.nome}`);
+  const pv=proxVencimento(), pat=patrimonio();
+  const dividas=[]; if(S.financiamento)dividas.push(`🏦 Financiamento ${brl0(S.financiamento.saldo)} · ${brl0(S.financiamento.parcela)}/mês`); if(S.emprestimo)dividas.push(`🏦 Empréstimo ${brl0(S.emprestimo.saldo)} · ${brl0(S.emprestimo.parcela)}/dia`);
   el.innerHTML=`<div style="display:flex;align-items:center;gap:9px">
     <div style="font-size:20px">🔭</div>
     <div style="flex:1;min-width:0">
       <div style="font-weight:800;font-size:14px">Previsão de amanhã</div>
       <div class="chips" style="margin-top:5px;justify-content:flex-start">${chips.map(c=>`<span class="chip">${c}</span>`).join('')}</div>
-    </div></div>`;
+    </div></div>
+    <div style="display:flex;gap:6px;margin-top:11px;padding-top:11px;border-top:1px solid var(--line2)">
+      <div style="flex:1;min-width:0"><div class="tiny muted" style="text-transform:uppercase;letter-spacing:.04em">Patrimônio</div><div style="font-weight:800;font-size:14px">${brl0(pat)}</div></div>
+      <div style="flex:1;min-width:0"><div class="tiny muted" style="text-transform:uppercase;letter-spacing:.04em">Caixa</div><div style="font-weight:800;font-size:14px;color:${S.caixa<0?'var(--bad)':'var(--gold)'}">${brl0(S.caixa)}</div></div>
+      <div style="flex:1;min-width:0"><div class="tiny muted" style="text-transform:uppercase;letter-spacing:.04em">🏠 Vence</div><div style="font-weight:800;font-size:14px;color:${pv.dias<=1?'var(--bad)':(pv.dias<=4?'var(--gold)':'var(--ink)')}">${pv.dias}d · ${brl0(pv.valor)}</div></div>
+    </div>
+    ${dividas.length?`<div class="tiny" style="margin-top:8px;color:var(--gold);line-height:1.45">${dividas.join(' &nbsp;·&nbsp; ')}</div>`:''}`;
 }
 function renderGestao(){
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===gestaoTab));
