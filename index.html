@@ -1160,9 +1160,25 @@ function manhaSec(name){
   c.hidden=name!=='cardapio'; a.hidden=name!=='ajustes';
   document.querySelectorAll('#manha-seg button').forEach(b=>b.classList.toggle('on',b.dataset.sec===name));
 }
+function renderFinanceiroCard(box){
+  const pv=proxVencimento();
+  const c=document.createElement('div'); c.className='card';
+  c.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+      <div style="font-size:20px">🏠</div>
+      <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px">Aluguel + luz do mês</div>
+        <div class="tiny muted" style="line-height:1.45">vence <b style="color:${pv.dias<=2?'var(--bad)':'var(--ink)'}">${pv.dias===0?'hoje':'em '+pv.dias+' dia'+(pv.dias>1?'s':'')}</b> · aluguel ${brl0(pv.rent)} + luz ${brl0(pv.luz)} = <b style="color:var(--ink)">${brl0(pv.valor)}</b></div></div>
+      <div style="text-align:right"><div class="tiny muted">caixa</div><div style="font-weight:800;font-size:14px;color:${S.caixa<0?'var(--bad)':'var(--gold)'}">${brl0(S.caixa)}</div></div></div>
+    ${S.financiamento?`<div class="tiny" style="margin-top:7px;color:var(--gold)">🏦 Financiamento · saldo ${brl0(S.financiamento.saldo)} · parcela ${brl0(S.financiamento.parcela)}/mês</div>`:''}
+    ${S.emprestimo?`<div class="tiny" style="margin-top:5px;color:var(--gold)">🏦 Empréstimo · saldo ${brl0(S.emprestimo.saldo)} · parcela ${brl0(S.emprestimo.parcela)}/dia</div>`:''}`;
+  box.appendChild(c);
+}
 function renderAjustesManha(){
   const box=$('#manha-ajustes'); if(!box)return; box.innerHTML='';
-  renderFreelaCard(box); renderComboCard(box); renderMaquinaCard(box);
+  const sec=(txt)=>{ const h=document.createElement('div'); h.className='cat-lbl'; h.textContent=txt; box.appendChild(h); };
+  sec('👥 Equipe');       renderFreelaCard(box);
+  sec('🛠️ Equipamento');  renderMaquinaCard(box);
+  sec('🎁 Operação');     renderComboCard(box);
+  sec('💰 Financeiro');   renderFinanceiroCard(box);
   // ponto vermelho no menuzinho quando a máquina pede revisão (senão o jogador não olha)
   const desg=(S.maq?.uso||0)/CFG.maqLimite;
   const ajBtn=document.querySelector('#manha-seg button[data-sec="ajustes"]');
