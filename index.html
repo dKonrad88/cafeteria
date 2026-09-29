@@ -477,6 +477,8 @@ function gerarConcorrente(){
     forca:1, promoDias:0, cooldown:round(rndM(t.reageEm[0],t.reageEm[1])), pressao:0, fechado:false };
 }
 function concorrentePreco(p){ const c=S.concorrente; return justoEff(p)*c.nivelPreco*(c.promoDias>0?0.85:1); }   // preço do rival pro mesmo produto
+// FASE 4 #2: força do rival escala com o TAMANHO do bairro — fraco no pequeno (não afoga), forte no grande. Tunável via window.CONC_SF={k,ref,lo,hi} p/ medir formatos.
+function concSizeFactor(){ const t=(S.bairro&&S.bairro.tamanho)||45, c=window.CONC_SF||{}; const ref=c.ref||45, k=(c.k!=null?c.k:3), lo=(c.lo!=null?c.lo:0.15), hi=(c.hi!=null?c.hi:1.35); const f=1+k*(t-ref)/ref; return Math.max(lo,Math.min(hi,f)); }   // Teto3: k=3, piso 0.15, teto 1.35 (medido: boemio 14->5.3%, rival mais forte nos grandes)
 /* Ingredientes (matéria-prima). preco = base * mercado (oscila). vol = volatilidade */
 function ingredientesBase(){return{
   graoComum:   {nome:'Grão comum',emoji:'🫘',base:1.30,vol:.14,qual:.45,seco:true,estoque:0,desbloq:true},   // FASE 1: trim de margem (0,90->1,30) p/ aterrar os numeros pos-preparo-correto
@@ -909,7 +911,7 @@ function simularDiaV2(){
       const concP=concorrentePreco(craving), seuP=(best||craving).preco;
       const vantPreco=clamp(seuP/Math.max(0.1,concP)-1,-0.6,1.2)*sens;   // rival mais barato × o quanto ele liga pra preço
       const vantFama=clamp(conc.fama/Math.max(0.1,repGeral())-1,-0.5,1)*0.35;
-      const pull=clamp((conc.distancia+vantPreco*0.5+vantFama)*conc.forca+rnd(-.04,.04),0,0.85);
+      const pull=clamp((conc.distancia+vantPreco*0.5+vantFama)*conc.forca*concSizeFactor()+rnd(-.04,.04),0,0.85);
       if(srandom()<pull){ foramConcorrente++; const mot=(vantPreco>=vantFama&&vantPreco>=conc.distancia)?'barato':(vantFama>=conc.distancia?'famoso':'perto'); motivosConc[mot]++; if(amostraConc.length<20)amostraConc.push({queria:craving.nome,motivo:mot}); continue; }
     }
     let motivo,prod=best,comprou=false,fatores='';

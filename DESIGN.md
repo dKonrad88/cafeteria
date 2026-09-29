@@ -147,4 +147,19 @@ Sondas só no harness (`cons` flag na CONSERVADORA) ou temporárias e revertidas
 
 **Recomendação (ordem):** (1) **filial-com-risco** (única adoção limpa; afrouxar pra ~20% dud); (2) **concorrente/custo proporcional ao tamanho** (conserta boêmio + destrava a punição do overpricing sem colateral); (3) overpricing = aceitar válido-mas-subótimo (ou dobrar no #2); (4) ambiente = deixar como está. **Nada aplicado — aguardando decisão do Diego.**
 
-**Pendente:** decisão do Diego sobre FASE 4; depois FASE 5-6.
+### FASE 4 — ADOÇÃO 1 (APLICADA): concorrente proporcional ao tamanho
+`concSizeFactor()` no `index.html`: a força/pull do rival escala com `bairro.tamanho` — `f = clamp(1 + k*(t-ref)/ref, lo, hi)`, aplicado em `pull *= concSizeFactor()`. **Default fixado = Teto3: k=3, ref=45, lo=0.15, hi=1.35.** Fatores: boêmio(33)=0,20 · residencial(38)=0,53 · turístico(47)=1,13 · universitário(50)=1,33 · comercial(59)=1,35. Rival fraco no pequeno (não afoga), forte no grande.
+
+**3 formatos medidos (build certa, 60d):**
+| Formato | f boêmio | falência boêmio | f comercial | rival comercial | falência comercial |
+|---|--:|--:|--:|--:|--:|
+| Hoje (f=1) | 1,00 | 14% | 1,00 | 20,4/d | 0,2% |
+| Linear (k=1) | 0,73 | 9% | 1,31 | 29,6/d | 0% |
+| **Piso (k=2,5, lo=0,30)** | 0,33 | 7,7% | 1,78 | 41,7/d | **9,3% ⛔ QUEBRA** |
+| **Teto3 (k=3, lo=0,15, hi=1,35) ✅** | 0,20 | **5,3%** | 1,35 | ~30/d | 0,8% |
+
+⚠️ **NÃO tentar o Piso (sem teto): rival forte demais afoga o comercial (falência 9,3%).** O teto é essencial.
+
+**Aceite Teto3 (5/5):** especialidade certa bate a base (E4) em 5/5 · errada catastrófica em 5/5 · "tudo" < melhor especialidade em 5/5. **Alvos:** boêmio 14,2→**5,3%** (piso sem rival = 4,7%); rival mais forte nos grandes (comercial foramRival 20,4→~30). **Trade-off aceito pelo Diego** (aceite #4 reinterpretado como "não sobe de forma RELEVANTE"): a falência dos grandes sobe pouco (comercial +0,6 · universitário +1,2 · turístico +0,5 pt; todos <4%) — é o custo lógico de um rival mais forte (não dá pra ter "mais forte" e "falência igual"). Boêmio caiu por design (rival fraco lá).
+
+**Pendente:** reabrir overpricing (dívida 2) com o rival proporcional; depois ADOÇÃO 2 (filial 20% dud); FASE 5-6.
