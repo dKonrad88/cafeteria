@@ -115,7 +115,10 @@ function applyGestao(cfg){let cardapio=0,cesta=0;
 /* preparo ajustado ao caixa; no vermelho, só despensa (Correção 1) */
 function fitPrep(){let c=custoPreparoTotal();if(c<=S.caixa)return;if(S.caixa<=0){produtosAtivos().forEach(p=>{p.prep=naoPerece(p)?Math.floor(p.estoque||0):0;});return;}const f=S.caixa/c;produtosAtivos().forEach(p=>{let np=round5(p.prep*f);if(naoPerece(p))np=Math.max(np,Math.floor(p.estoque||0));p.prep=np;});if(custoPreparoTotal()>S.caixa)produtosAtivos().forEach(p=>{p.prep=naoPerece(p)?Math.floor(p.estoque||0):0;});}
 function setRedPrep(mode){produtosAtivos().forEach(p=>{if(naoPerece(p)){p.prep=Math.floor(p.estoque||0);}else if(p.tipo==='revenda'){p.prep=0;}else if(mode==='despensa'){let mk=Infinity;for(const ing in p.receita){const real=ing==='grao'?S.graoAtivo:ing;const need=p.receita[ing];mk=Math.min(mk,need>0?Math.floor((S.ing[real].estoque||0)/need):Infinity);}p.prep=isFinite(mk)?mk:0;}else{p.prep=0;}});}
-function abrirDia(redMode){fitPrep();if(S.caixa>0&&custoPreparoTotal()<=S.caixa){abrir();return;}setRedPrep(redMode);const _cpt=window.custoPreparoTotal;window.custoPreparoTotal=()=>-Infinity;try{abrir();}finally{window.custoPreparoTotal=_cpt;}}
+// conserto #2a: o jogo (abrir) agora ajusta o preparo ao caixa e NUNCA bloqueia. O harness só abre.
+function abrirDia(redMode){ abrir(); }
+// (legado, mantido caso algum experimento chame; não é mais o caminho padrão)
+function abrirDiaLegacy(redMode){fitPrep();if(S.caixa>0&&custoPreparoTotal()<=S.caixa){abrir();return;}setRedPrep(redMode);const _cpt=window.custoPreparoTotal;window.custoPreparoTotal=()=>-Infinity;try{abrir();}finally{window.custoPreparoTotal=_cpt;}}
 
 function resolveCfg(x){ return (typeof x==='string')?(CONFIGS[x]||CONFIGS.NEUTRA):x; }
 
@@ -142,7 +145,7 @@ function runGame(strat, seed, days, opts){
       S.custoFornecedor=ex; }
     const e=estimativaClientes(),previsto=e.mid+estimativaClube();
     const capHoje=capacidadeHoje();
-    fitPrep(); const preparado=produtosAtivos().reduce((s,p)=>s+p.prep,0);
+    fitPreparoCaixa(); const preparado=produtosAtivos().reduce((s,p)=>s+p.prep,0);   // #2a: fit do jogo (nunca zera por bloqueio)
     simResultado=null; abrirDia(redMode);
     const r=simResultado; if(!r)break;
     if(window.ECON45){ const E=window.ECON45; S.caixa+=r.fixo; S._lightVol=(S._lightVol||0)+r.itensVendidos;   // FASE 4.5: desfaz o fixo DIARIO; cobra recorrentes MENSAIS no vencimento
@@ -339,7 +342,7 @@ function forecastAudit(bairroType, seeds, days, opts){ opts=opts||{}; const stra
   window.__FA=window.__FA||{}; const store=window.__FA[bairroType]=window.__FA[bairroType]||[];
   fastDOM(true);
   try{ seeds.forEach(seed=>{ const r=runGame(strat,seed,days||60,{bairroType,concType:opts.concType});
-    r.perDay.forEach(d=>{ store.push({seed,dia:d.dia,midUI:d.midUI,atend:d.atendidos,dem:d.demanda,walk:d.walkReal,
+    r.perDay.forEach(d=>{ store.push({seed,dia:d.dia,midUI:d.midUI,atend:d.atendidos,dem:d.demanda,walk:d.walkReal,prep:Math.round(d.preparado),caixa:Math.round(d.caixa),
       fila:d.fila,conc:d.conc,preco:d.preco,esg:d.esgotou,evT:d.eventoTipo,clima:d.clima,cForca:d.concForca,cFechou:d.concFechou}); }); });
   } finally{ fastDOM(false); }
   return {bairro:bairroType,strat,added:seeds.length*(days||60),total:store.length};
@@ -359,7 +362,7 @@ function forecastReport(bairroType){ const rows=(window.__FA&&window.__FA[bairro
     ratio:{p10:+quantile(ratios,.10).toFixed(2), p50:+median(ratios).toFixed(2), p90:+quantile(ratios,.90).toFixed(2)},
     absErr:{p10:Math.round(quantile(absErr,.10)), p50:Math.round(median(absErr)), p90:Math.round(quantile(absErr,.90))},
     medias_todos:{midUI:mAll('midUI'),dem:mAll('dem'),walk:mAll('walk'),atend:mAll('atend'),fila:mAll('fila'),conc:mAll('conc'),preco:mAll('preco'),esg:mAll('esg'),cForca:mAll('cForca')},
-    dias_ruins:{quantos:low50.length, midUI:mSub('midUI'),dem:mSub('dem'),atend:mSub('atend'),fila:mSub('fila'),conc:mSub('conc'),preco:mSub('preco'),esg:mSub('esg'),cForca:mSub('cForca'),eventoRuimPct:evRuim},
+    dias_ruins:{quantos:low50.length, midUI:mSub('midUI'),dem:mSub('dem'),prep:mSub('prep'),caixa:mSub('caixa'),atend:mSub('atend'),fila:mSub('fila'),conc:mSub('conc'),preco:mSub('preco'),esg:mSub('esg'),cForca:mSub('cForca'),eventoRuimPct:evRuim},
     share_do_buraco:{naoApareceu:share('noShow'),fila:share('fila'),conc:share('conc'),preco:share('preco'),esgotou:share('esg')} };
 }
 function forecastClear(){ window.__FA={}; return 'ok'; }

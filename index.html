@@ -286,6 +286,7 @@
         <span class="g">Custo do preparo hoje</span>
         <span class="v" id="manha-custo">R$ 0,00</span>
       </div>
+      <div class="tiny" id="manha-aviso-caixa" hidden style="text-align:center;color:var(--bad);margin:2px 4px 0;line-height:1.4;font-weight:700"></div>
       <button class="cta" id="btn-abrir">Abrir as portas 🔓</button>
       <p class="tiny muted" style="text-align:center;margin:0">Grãos e leite saem da despensa; o que faltar é comprado ao preço do dia. Sobra de produto pronto é perda.</p>
     </section>
@@ -1130,22 +1131,29 @@ function renderAjustesManha(){
 function renderFreelaCard(box){
   const f=S.freelaHoje||0, capHoje=capacidadeHoje();
   const est=estimativaClientes(), apertado=est.hi>capHoje;
+  const af=preparoAfordavel(), bloqFreela=!af.cabe;   // 2b: preparo limitado pelo caixa → falta produto, não balcão
   const ativos=produtosAtivos();
   const margem=ativos.length?ativos.reduce((a,p)=>a+(p.preco-custoUnit(p)),0)/ativos.length:4;
   const ptEq=Math.max(1,Math.ceil(CFG.salarioFreela/Math.max(0.5,margem)));
   const card=document.createElement('div');card.className='card';
-  if(apertado||f>0) card.style.borderColor='var(--gold-soft)';
+  if(bloqFreela) card.style.borderColor='var(--bad)';
+  else if(apertado||f>0) card.style.borderColor='var(--gold-soft)';
+  const nota = bloqFreela
+    ? `<div class="tiny" style="margin-top:8px;line-height:1.4;color:var(--bad);font-weight:700">🚫 Hoje o caixa só cobre preparo pra ~${af.afford} un — falta <b>produto</b>, não balcão. Reforço custaria R$${CFG.salarioFreela} sem retorno.</div>`
+    : `<div class="tiny muted" style="margin-top:8px;line-height:1.4">Cada freela: <b>+${CFG.capBarista}</b> clientes por <b>R$${CFG.salarioFreela}</b> (avulso). Só compensa se recuperar <b style="color:var(--crema)">~${ptEq}</b> clientes que iriam embora na fila.</div>`;
   card.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
       <div style="font-size:20px">🧑‍🍳</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:800;font-size:14px">Reforço de hoje${f>0?` · ${f} freela${f>1?'s':''}`:''}</div>
-        <div class="tiny muted">movimento esperado <b>~${est.mid}</b> · atende até <b style="color:${apertado?'var(--bad)':'var(--good)'}">${capHoje}/dia</b>${apertado?' — o previsto passa disso; parte vai embora na fila!':''}</div>
+        <div class="tiny muted">movimento esperado <b>~${est.mid}</b> · atende até <b style="color:${apertado?'var(--bad)':'var(--good)'}">${capHoje}/dia</b>${apertado&&!bloqFreela?' — o previsto passa disso; parte vai embora na fila!':''}</div>
       </div>
       <div class="stepper" style="flex:none"><button class="dec-f">−</button><span class="qtd" style="min-width:30px">${f}</span><button class="inc-f">+</button></div>
     </div>
-    <div class="tiny muted" style="margin-top:8px;line-height:1.4">Cada freela: <b>+${CFG.capBarista}</b> clientes por <b>R$${CFG.salarioFreela}</b> (avulso). Só compensa se recuperar <b style="color:var(--crema)">~${ptEq}</b> clientes que iriam embora na fila.</div>`;
+    ${nota}`;
   card.querySelector('.dec-f').addEventListener('click',()=>{S.freelaHoje=Math.max(0,(S.freelaHoje||0)-1);renderItensManha()});
-  card.querySelector('.inc-f').addEventListener('click',()=>{S.freelaHoje=(S.freelaHoje||0)+1;renderItensManha()});
+  const inc=card.querySelector('.inc-f');
+  if(bloqFreela){ inc.disabled=true; inc.style.opacity='.35'; inc.style.cursor='not-allowed'; }
+  else inc.addEventListener('click',()=>{S.freelaHoje=(S.freelaHoje||0)+1;renderItensManha()});
   box.appendChild(card);
 }
 function custoManutencao(){return 40+S.upg.maquina*15}
@@ -1265,11 +1273,39 @@ function custoPreparoTotal(){ // só o que vai ser comprado (ingrediente que fal
   for(const ing in consumo){ const falta=Math.max(0,consumo[ing]-S.ing[ing].estoque); total+=falta*precoIng(ing); }
   return total;
 }
+/* FASE — conserto #2a: o preparo NUNCA zera por bloqueio. Se o caixa não cobre, prepara o
+   máximo que ele permite (escala proporcional; despensa/estoque continuam de graça). Um dia
+   pequeno é recuperável; um dia zero cria a espiral. Muta S.prod[*].prep. */
+function fitPreparoCaixa(){
+  if(custoPreparoTotal()<=S.caixa) return false;
+  const ativos=produtosAtivos();
+  if(S.caixa>0){ const f=S.caixa/custoPreparoTotal();
+    ativos.forEach(p=>{ const np=naoPerece(p); let v=Math.max(0,Math.floor((p.prep*f)/5)*5); if(np)v=Math.max(v,Math.floor(p.estoque||0)); p.prep=v; }); }
+  // arredondamento/caixa<=0: apara o maior perecível comprado até caber (o que a despensa cobre custa 0 e fica)
+  let guard=0;
+  while(custoPreparoTotal()>Math.max(0,S.caixa) && guard++<300){
+    const alvo=ativos.filter(p=>!naoPerece(p)&&p.prep>0).sort((a,b)=>b.prep-a.prep)[0];
+    if(!alvo)break; alvo.prep=Math.max(0,alvo.prep-5);
+  }
+  return true;
+}
+/* 2b (leitura, não muta): quanto do preparo pretendido o caixa cobre, pra avisar na manhã. */
+function preparoAfordavel(){
+  const ativos=produtosAtivos(), intended=ativos.reduce((a,p)=>a+p.prep,0);
+  if(custoPreparoTotal()<=S.caixa) return {cabe:true,intended,afford:intended,falta:0};
+  const snap=ativos.map(p=>p.prep); fitPreparoCaixa();
+  const afford=ativos.reduce((a,p)=>a+p.prep,0);
+  ativos.forEach((p,i)=>p.prep=snap[i]);   // restaura o que o jogador pôs (o corte real acontece no abrir)
+  return {cabe:false,intended,afford,falta:Math.max(0,intended-afford)};
+}
 function atualizaCusto(){
   const c=custoPreparoTotal();const el=$('#manha-custo');el.textContent=brl(c);
   el.style.color=c>S.caixa?'var(--bad)':'var(--crema)';
-  $('#btn-abrir').disabled=c>S.caixa;
-  $('#btn-abrir').textContent=c>S.caixa?'Caixa insuficiente':'Abrir as portas 🔓';
+  const btn=$('#btn-abrir'); btn.disabled=false; btn.textContent='Abrir as portas 🔓';   // 2a: nunca trava — o abrir ajusta o preparo ao caixa
+  const av=$('#manha-aviso-caixa');
+  if(av){ if(c>S.caixa){ const af=preparoAfordavel();
+      av.hidden=false; av.innerHTML=`⚠️ Caixa cobre preparo pra <b>~${af.afford}</b> un (você pôs ${af.intended}) — <b>~${af.falta}</b> vão faltar hoje.`;
+    } else av.hidden=true; }
 }
 function estimativaClube(){const d=demandaAssinantes();let s=0;for(const k in d)s+=d[k];return round(s)}   // quantos assinantes devem passar
 function estimativaCombos(demAvulsaMid){                                                                     // quantos combos devem sair (mesma lógica de fracCombo do simularDia)
@@ -1289,7 +1325,7 @@ function atualizaEstimativa(){
 
 /* ===================== EXPEDIENTE ===================== */
 function abrir(){
-  const custo=custoPreparoTotal(); if(custo>S.caixa)return;
+  fitPreparoCaixa();   // 2a: nunca bloqueia; ajusta o preparo ao que o caixa cobre (nunca zero por bloqueio)
   // consome despensa e paga o que falta
   const consumo={};
   produtosAtivos().forEach(p=>{ if(p.tipo!=='revenda') for(const ing in p.receita){const real=ing==='grao'?S.graoAtivo:ing;consumo[real]=(consumo[real]||0)+p.receita[ing]*p.prep;} });
