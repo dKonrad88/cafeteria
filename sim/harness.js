@@ -158,6 +158,7 @@ function runGame(strat, seed, days, opts){
       receitaBruta:r.receita+r.receitaClube+r.receitaDeliv+r.gorjeta,custoInsumo:r.custoIng+r.custoRevenda,perdaSobra:r.perdaSobra,salarios:r.salarios,fixo:r.fixo,
       custoManutencao:r.conserto,parcela:(r._parcela||0),capexGrao,capexCardapio:g.cardapio,capexCesta:g.cesta,lucroPL:r.lucro,
       cap:capHoje,preparado,demanda:r.demandaTotal,chegaram:Math.max(0,r.demandaTotal-r.perdidosFila),fila:r.perdidosFila,conc:(r.foramConcorrente||0),preco:(r.perdidosPreco||0),esgotou:r.faltou,atendidos:r.vendasPagas,itens:r.itensVendidos,
+      midUI:e.mid,walkReal:(r._debug?r._debug.nWalk:0),concForca:(S.concorrente?+(S.concorrente.forca).toFixed(2):0),concFechou:!!(r._debug&&r._debug.concFechou),
       previsto,realizado:r.demandaTotal,caixa:S.caixa});
     if(S.caixa<0){diasNeg++;wentRed=true;} if(S.caixa<minCaixa)minCaixa=S.caixa;
     if(S.diasVermelho>=CFG.diasVermelhoMax){   // FASE 4 fix #2: modela o emprestimo do jogo (posDia). Jogada sensata ACEITA; irFechamento paga a parcela.
@@ -331,10 +332,42 @@ function batteryDStat(bairroType,seeds,days,bundleNames,probeD){ fastDOM(true); 
     return {bairro:bairroType,cells};
   } finally{ _DPROBE=null; _dRestore(save); fastDOM(false); }
 }
+/* ===== AUDITORIA DA PREVISÃO (bug: prevê 138, atende <40) =====
+   Junta linhas CRUAS por dia em window.__FA[bairro] (sobrevive a timeout). midUI = número que o
+   jogador VÊ na gestão (est.mid, sem clube). Depois, forecastReport agrega. */
+function forecastAudit(bairroType, seeds, days, opts){ opts=opts||{}; const strat=opts.strat||'ESPERTA';
+  window.__FA=window.__FA||{}; const store=window.__FA[bairroType]=window.__FA[bairroType]||[];
+  fastDOM(true);
+  try{ seeds.forEach(seed=>{ const r=runGame(strat,seed,days||60,{bairroType,concType:opts.concType});
+    r.perDay.forEach(d=>{ store.push({seed,dia:d.dia,midUI:d.midUI,atend:d.atendidos,dem:d.demanda,walk:d.walkReal,
+      fila:d.fila,conc:d.conc,preco:d.preco,esg:d.esgotou,evT:d.eventoTipo,clima:d.clima,cForca:d.concForca,cFechou:d.concFechou}); }); });
+  } finally{ fastDOM(false); }
+  return {bairro:bairroType,strat,added:seeds.length*(days||60),total:store.length};
+}
+function forecastReport(bairroType){ const rows=(window.__FA&&window.__FA[bairroType])||[]; if(!rows.length)return {bairro:bairroType,n:0};
+  const n=rows.length, ratios=rows.map(r=>r.atend/Math.max(1,r.midUI)), absErr=rows.map(r=>r.atend-r.midUI);
+  const low50=rows.filter(r=>r.midUI>=5 && r.atend<0.5*r.midUI), low30=rows.filter(r=>r.midUI>=5 && r.atend<0.3*r.midUI);
+  const mAll=k=>+ (rows.reduce((s,r)=>s+r[k],0)/n).toFixed(1);
+  const sub=low50.length?low50:rows, mSub=k=>+ (sub.reduce((s,r)=>s+r[k],0)/sub.length).toFixed(1);
+  const noShow=r=>Math.max(0,r.midUI-r.dem);
+  const gapSum=k=>sub.reduce((s,r)=>s+(k==='noShow'?noShow(r):r[k]),0);
+  const gapTot=sub.reduce((s,r)=>s+Math.max(0,r.midUI-r.atend),0)||1;
+  const share=k=>+(100*gapSum(k)/gapTot).toFixed(0);
+  const evRuim=+(100*sub.filter(r=>r.evT==='ruim').length/sub.length).toFixed(0);
+  return { bairro:bairroType, n,
+    pctLow50:+(100*low50.length/n).toFixed(1), pctLow30:+(100*low30.length/n).toFixed(1),
+    ratio:{p10:+quantile(ratios,.10).toFixed(2), p50:+median(ratios).toFixed(2), p90:+quantile(ratios,.90).toFixed(2)},
+    absErr:{p10:Math.round(quantile(absErr,.10)), p50:Math.round(median(absErr)), p90:Math.round(quantile(absErr,.90))},
+    medias_todos:{midUI:mAll('midUI'),dem:mAll('dem'),walk:mAll('walk'),atend:mAll('atend'),fila:mAll('fila'),conc:mAll('conc'),preco:mAll('preco'),esg:mAll('esg'),cForca:mAll('cForca')},
+    dias_ruins:{quantos:low50.length, midUI:mSub('midUI'),dem:mSub('dem'),atend:mSub('atend'),fila:mSub('fila'),conc:mSub('conc'),preco:mSub('preco'),esg:mSub('esg'),cForca:mSub('cForca'),eventoRuimPct:evRuim},
+    share_do_buraco:{naoApareceu:share('noShow'),fila:share('fila'),conc:share('conc'),preco:share('preco'),esgotou:share('esg')} };
+}
+function forecastClear(){ window.__FA={}; return 'ok'; }
 /* E4: vencedor estatisticamente distinto? (mediana do 1o FORA do IQR [p25,p75] do 2o) */
 function winnerStat(cells){ const ent=Object.entries(cells).sort((a,b)=>b[1].med-a[1].med); const a=ent[0],b=ent[1];
   const distinct=a[1].med>b[1].p75; return {win:a[0],med:a[1].med,second:b[0],secondP75:b[1].p75,distinct}; }
 
 return {probe,proofPRNG,runGame,battery,priceSweep,priceSweepSeg,priceSweepConc,medianRun,oracleBattery,oracleCfg,probeBattery,aggCell,fastDOM,CONFIGS,ORACLE_PRICE,BAIRROS,STRATS,forcedBairro,forcedConc,
-  C5_PRICE,DBUNDLES,bundleCfg,batteryD,batteryDProbes,repBreakdown,priceSweepD,traceD,batteryDStat,winnerStat,quantile};
+  C5_PRICE,DBUNDLES,bundleCfg,batteryD,batteryDProbes,repBreakdown,priceSweepD,traceD,batteryDStat,winnerStat,quantile,
+  forecastAudit,forecastReport,forecastClear};
 })();
