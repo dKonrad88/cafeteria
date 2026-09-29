@@ -1176,17 +1176,31 @@ function renderFinanceiroCard(box){
     ${S.emprestimo?`<div class="tiny" style="margin-top:5px;color:var(--gold)">🏦 Empréstimo · saldo ${brl0(S.emprestimo.saldo)} · parcela ${brl0(S.emprestimo.parcela)}/dia</div>`:''}`;
   box.appendChild(c);
 }
+let _ajSec='equipe';
 function renderAjustesManha(){
   const box=$('#manha-ajustes'); if(!box)return; box.innerHTML='';
-  const sec=(txt)=>{ const h=document.createElement('div'); h.className='cat-lbl'; h.textContent=txt; box.appendChild(h); };
-  sec('👥 Equipe');       renderFreelaCard(box);
-  sec('🛠️ Equipamento');  renderMaquinaCard(box);
-  sec('🎁 Operação');     renderComboCard(box);
-  sec('💰 Financeiro');   renderFinanceiroCard(box);
-  // ponto vermelho no menuzinho quando a máquina pede revisão (senão o jogador não olha)
   const desg=(S.maq?.uso||0)/CFG.maqLimite;
+  const pv=proxVencimento();
+  const alertFin = pv.dias<=1 || S.caixa < pv.valor;
+  const secs=[
+    {id:'equipe', ico:'👥', nome:'Equipe',    render:renderFreelaCard,     dot:false},
+    {id:'equip',  ico:'🛠️', nome:'Equip.',     render:renderMaquinaCard,    dot:desg>=0.7},
+    {id:'oper',   ico:'🎁', nome:'Operação',  render:renderComboCard,      dot:false},
+    {id:'fin',    ico:'💰', nome:'Finanças',  render:renderFinanceiroCard, dot:alertFin},
+  ];
+  if(!secs.some(s=>s.id===_ajSec)) _ajSec='equipe';
+  // sub-navbar
+  const nav=document.createElement('div'); nav.style.cssText='display:flex;gap:6px;margin-bottom:11px';
+  secs.forEach(s=>{ const on=_ajSec===s.id; const b=document.createElement('button');
+    b.style.cssText=`flex:1;padding:8px 3px 7px;border-radius:11px;border:1px solid ${on?'var(--gold-soft)':'var(--line2)'};background:${on?'var(--surface3)':'transparent'};color:${on?'var(--gold)':'var(--ink-soft)'};font-weight:800;font-size:11px;line-height:1.25;position:relative`;
+    b.innerHTML=`<div style="font-size:16px;margin-bottom:1px">${s.ico}</div>${s.nome}${s.dot?'<span style="position:absolute;top:5px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--bad)"></span>':''}`;
+    b.addEventListener('click',()=>{_ajSec=s.id;renderAjustesManha()}); nav.appendChild(b); });
+  box.appendChild(nav);
+  const content=document.createElement('div'); box.appendChild(content);
+  (secs.find(s=>s.id===_ajSec)||secs[0]).render(content);
+  // ponto vermelho no menuzinho quando a máquina pede revisão ou a conta aperta
   const ajBtn=document.querySelector('#manha-seg button[data-sec="ajustes"]');
-  if(ajBtn) ajBtn.innerHTML=`🎛️ Ajustes do dia${desg>=0.7?' <span style="color:var(--bad);font-size:15px;line-height:0">•</span>':''}`;
+  if(ajBtn) ajBtn.innerHTML=`🎛️ Ajustes do dia${(desg>=0.7||alertFin)?' <span style="color:var(--bad);font-size:15px;line-height:0">•</span>':''}`;
 }
 function renderFreelaCard(box){
   const f=S.freelaHoje||0, capHoje=capacidadeHoje();
