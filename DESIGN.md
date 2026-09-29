@@ -162,4 +162,15 @@ Sondas só no harness (`cons` flag na CONSERVADORA) ou temporárias e revertidas
 
 **Aceite Teto3 (5/5):** especialidade certa bate a base (E4) em 5/5 · errada catastrófica em 5/5 · "tudo" < melhor especialidade em 5/5. **Alvos:** boêmio 14,2→**5,3%** (piso sem rival = 4,7%); rival mais forte nos grandes (comercial foramRival 20,4→~30). **Trade-off aceito pelo Diego** (aceite #4 reinterpretado como "não sobe de forma RELEVANTE"): a falência dos grandes sobe pouco (comercial +0,6 · universitário +1,2 · turístico +0,5 pt; todos <4%) — é o custo lógico de um rival mais forte (não dá pra ter "mais forte" e "falência igual"). Boêmio caiu por design (rival fraco lá).
 
-**Pendente:** reabrir overpricing (dívida 2) com o rival proporcional; depois ADOÇÃO 2 (filial 20% dud); FASE 5-6.
+### FASE 4 — dívida 2 (overpricing): FECHADA pela #2
+Com o rival proporcional (Teto3), o overpricer (base ×1,35, comercial, 120d) **já é erro a PULL 1×** (sem amplificar): pat **574, falência 44%** (era 22.807 lucrando no mundo pré-#2), enquanto o bom jogador fica intacto (comercial 40.274/0%, boêmio 57.844/11%). Amplificar (PULL 1,25/1,5×) mata mais o overpricer MAS começa a ferir o bom jogador comercial (40k→17k, fal 0→23%) → desnecessário. **`PULL_MULT` testado e REVERTIDO (não adotado).** A #2 removeu o colateral e puniu o overpricing de uma vez — o rival forte no comercial captura quem o overpricer espanta.
+
+### FASE 4 — ADOÇÃO 2 (APLICADA): filial com risco real (20% dud)
+`index.html`: `potencial rnd(120,420)` (mais amplo), **~20% não vingam** (`viavel`, rendem 25%), maturação `/35` (mais devagar). Save antigo sem `viavel` = viável (sem penalidade).
+- **Vira decisão** (pareado certa vs certa+rede, 120d): comercial **55%/+3.077** · turístico **55%/+820** (favoráveis, EV+) · residencial 49%/0 · universitário 49%/0 · boêmio 47%/0 (arriscado, ~toss-up). Era ~obrigação (comercial +8.782/81% sem risco). EV pende positivo no favorável, neutro no arriscado (boêmio ~neutro, não fortemente negativo — se quiser mais punitivo lá, subir dud ou piorar o bairro da filial).
+- **Leitura do gate (sem corrigir):** turístico alcança rep 3,6 em só **21%** (refresco dá menos nota de qualidade), e turístico é dos melhores winRates de filial → **a decisão mais interessante quase não aparece onde é mais favorável**. Coerente como ficção (point turístico fatura mas não constrói "fama"/qualidade pra franquear), frustrante como jogo. Decisão do Diego.
+
+### FASE 4 — dificuldade relativa (certa, 60d, pós-#2): NÃO homogeneizou
+boêmio 20.789/5,6%/gate78 · residencial 19.706/4%/91 · turístico 18.333/2,8%/**21** · comercial 16.460/0,8%/87 · universitário 13.022/4%/96. Variedade preservada (boêmio boom-or-bust; comercial seguro-mas-espremido pelo rival forte; universitário o pobre; turístico gate-travado). Diego prefere um bairro difícil a cinco iguais — mantido.
+
+**Pendente:** decisão do Diego sobre o gate do turístico; FASE 5 (vida própria) e 6 (régua de preço/UI/PWA).

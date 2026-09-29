@@ -773,7 +773,7 @@ function abrirFilial(){
   const livres=BAIRROS_FILIAL.filter(b=>!usados.has(b.nome));
   const b=pick(livres.length?livres:BAIRROS_FILIAL);
   S.caixa-=custo;
-  S.filiais.push({nome:b.nome,emoji:b.emoji,potencial:round(rnd(240,330)),aluguel:38,salarioGerente:88,bairro:rnd(0.92,1.08),dias:0,invest:custo});
+  S.filiais.push({nome:b.nome,emoji:b.emoji,potencial:round(rnd(120,420)),viavel:srandom()>=0.20,aluguel:38,salarioGerente:88,bairro:rnd(0.92,1.08),dias:0,invest:custo});   // FASE 4 #1: risco real — potencial mais amplo + ~20% nao vingam
   salvar();atualizaHud();flutua(`${b.emoji} Cafeteria do ${b.nome} inaugurada!`);
   return true;
 }
@@ -784,8 +784,9 @@ function simulaFiliais(){
   (S.filiais||[]).forEach(f=>{
     f.dias=(f.dias||0)+1;
     f.bairro=clamp((f.bairro??1)+rnd(-0.05,0.05),0.6,1.4);   // o bairro da filial tem sua própria maré
-    const maturidade=clamp(f.dias/20,0.25,1);               // engata em ~20 dias
-    const fat=Math.max(0, f.potencial*maturidade*(0.35+0.8*brand)*f.bairro*rnd(0.82,1.18));
+    const maturidade=clamp(f.dias/35,0.25,1);               // FASE 4 #1: engata mais devagar (~35 dias)
+    const viab=(f.viavel===false)?0.25:1;                   // FASE 4 #1: ~20% nao vingam (rendem pouco); save antigo sem 'viavel' = viavel
+    const fat=Math.max(0, f.potencial*maturidade*(0.35+0.8*brand)*f.bairro*rnd(0.82,1.18)*viab);
     const cst=f.aluguel+f.salarioGerente;
     const luc=fat-cst;
     bruto+=fat; custo+=cst; lucro+=luc;
